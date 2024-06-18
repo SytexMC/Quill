@@ -12,8 +12,8 @@ public class Chat {
         return MiniMessage.miniMessage().deserialize(text);
     }
 
-    public static String translateLegacy(Component text) {
-        return LegacyComponentSerializer.legacyAmpersand().serialize(text);
+    public static Component translateLegacy(String text) {
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
     }
 
     public static List<Component> translate(List<String> text) {

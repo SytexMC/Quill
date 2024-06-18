@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import java.util.List;
+import java.util.function.Function;
 
 @Getter
 public class ItemWrapper {
@@ -14,7 +15,7 @@ public class ItemWrapper {
     private int amount;
     private int modelData;
 
-    private int slot;
+    private List<Integer> slots;
 
     public ItemWrapper(Material material) {
         this.material = material;
@@ -26,29 +27,45 @@ public class ItemWrapper {
         this.amount = amount;
     }
 
-    public void name(String name) {
+    public ItemWrapper name(String name) {
         this.name = name;
+
+        return this;
     }
 
-    public void lore(List<String> lore) {
+    public ItemWrapper lore(List<String> lore) {
         this.lore = lore;
+
+        return this;
     }
 
-    public void amount(int amount) {
+    public ItemWrapper amount(int amount) {
         this.amount = amount;
+
+        return this;
     }
 
-    public void modelData(int modelData) {
+    public ItemWrapper modelData(int modelData) {
         this.modelData = modelData;
+
+        return this;
     }
 
-    public void slot(int slot) {
-        this.slot = slot;
+    public ItemWrapper slot(int slot) {
+        this.slots = List.of(slot);
+
+        return this;
+    }
+
+    public ItemWrapper slots(List<Integer> slots) {
+        this.slots = slots;
+
+        return this;
     }
 
     /**
      * Builds a final item with translated name, lore and other information.
-     * @return The final item.
+     * @return The final ItemStack.
      */
     public ItemStack build() {
         final ItemStack item = new ItemStack(material, amount);
@@ -59,6 +76,28 @@ public class ItemWrapper {
 
             if (lore != null)
                 m.lore(Chat.translate(lore));
+
+            if (modelData != 0)
+                m.setCustomModelData(modelData);
+        });
+
+        return item;
+    }
+
+    /**
+     * Builds a final item with translated name, lore and other information.
+     * @param replace A replace function used to replace values in name and lore.
+     * @return The final ItemStack
+     */
+    public ItemStack build(Function<String, String> replace) {
+        final ItemStack item = new ItemStack(material, amount);
+
+        item.editMeta(m -> {
+            if (name != null)
+                m.displayName(Chat.translate(replace.apply(name)));
+
+            if (lore != null)
+                m.lore(Chat.translate(lore.stream().map(replace).toList()));
 
             if (modelData != 0)
                 m.setCustomModelData(modelData);

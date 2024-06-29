@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Random;
 import java.util.UUID;
 
 public class Util {
@@ -17,5 +18,9 @@ public class Util {
                 new ItemStack(Material.PLAYER_HEAD),
                 "{SkullOwner:{Id:[I;" + (less * most) + "," + (less >> 23) + "," + (most / less) + "," + (most * 8731) + "],Properties:{textures:[{Value:\"" + value + "\"}]}}}"
         );
+    }
+
+    public static int getRandomNumber(int min, int max) {
+        return new Random().nextInt((max - min) + 1) + min;
     }
 }

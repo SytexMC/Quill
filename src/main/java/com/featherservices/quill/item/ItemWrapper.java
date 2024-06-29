@@ -2,6 +2,7 @@ package com.featherservices.quill.item;
 
 import com.featherservices.quill.utils.Chat;
 import lombok.Getter;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import java.util.List;
@@ -51,6 +52,10 @@ public class ItemWrapper {
         return this;
     }
 
+    public int getSlot() {
+        return slots.get(0);
+    }
+
     public ItemWrapper slot(int slot) {
         this.slots = List.of(slot);
 
@@ -72,10 +77,10 @@ public class ItemWrapper {
 
         item.editMeta(m -> {
             if (name != null)
-                m.displayName(Chat.translate(name));
+                m.displayName(Chat.translate(name).decoration(TextDecoration.ITALIC, false));
 
             if (lore != null)
-                m.lore(Chat.translate(lore));
+                m.lore(Chat.translate(lore).stream().map(l -> l.decoration(TextDecoration.ITALIC, false)).toList());
 
             if (modelData != 0)
                 m.setCustomModelData(modelData);
@@ -94,10 +99,10 @@ public class ItemWrapper {
 
         item.editMeta(m -> {
             if (name != null)
-                m.displayName(Chat.translate(replace.apply(name)));
+                m.displayName(Chat.translate(replace.apply(name)).decoration(TextDecoration.ITALIC, false));
 
             if (lore != null)
-                m.lore(Chat.translate(lore.stream().map(replace).toList()));
+                m.lore(Chat.translate(lore.stream().map(replace).toList()).stream().map(l -> l.decoration(TextDecoration.ITALIC, false)).toList());
 
             if (modelData != 0)
                 m.setCustomModelData(modelData);

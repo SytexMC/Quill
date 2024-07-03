@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.featherservices"
-version = "2.0.0"
+version = "2.0.1"
 
 repositories {
     mavenCentral()
@@ -17,9 +17,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
 
-    implementation(fileTree("libs/impl"))
-}
-
-tasks.shadowJar {
-    relocate("com.goldfinch.configs", "com.featherservices.config")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.0-rc1")
+    implementation("org.apache.commons:commons-lang3:3.14.0")
+    implementation("com.googlecode.json-simple:json-simple:1.1.1")
 }

@@ -1,58 +1,67 @@
 package com.featherservices.quill.storage;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.featherservices.quill.storage.adapters.UUIDAdapter;
+import com.squareup.moshi.*;
 import lombok.Getter;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Getter
 public abstract class JSONStorage<K, V> {
     private final Plugin plugin;
-    private final ObjectMapper objectMapper;
     private final File file;
-
-    private final HashMap<K, V> cache;
+    private final Map<K, V> storage;
+    private final Moshi moshi;
+    private final JsonAdapter<Map<K, V>> jsonAdapter;
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public JSONStorage(Plugin plugin, ObjectMapper objectMapper, String fileName) {
+    public JSONStorage(Plugin plugin, String fileName, Class<K> keyClass, Class<V> valueClass) {
         this.plugin = plugin;
-        this.objectMapper = objectMapper;
         this.file = new File(plugin.getDataFolder(), fileName);
-        this.cache = new HashMap<>();
+        this.storage = new HashMap<>();
 
-        // Create data folder if it does not exist
+        this.moshi = new Moshi.Builder()
+                .add(UUID.class, new UUIDAdapter())
+                .build();
+
+        final Type type = Types.newParameterizedType(Map.class, keyClass, valueClass);
+        this.jsonAdapter = moshi.adapter(type);
+
+        // Ensure the data folder exists
         if (!plugin.getDataFolder().exists())
-            plugin.getDataFolder().mkdir();
-
-        // Load all the data to the cache
-        load();
+            plugin.getDataFolder().mkdirs();
     }
 
     public void save() {
-        try {
-            objectMapper.writeValue(file, cache);
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.write(jsonAdapter.toJson(storage));
         } catch (IOException e) {
-            plugin.getLogger().severe("Error saving JSON storage: " + e.getMessage());
+            plugin.getLogger().severe(e.getMessage());
         }
     }
 
     public void load() {
-        if (!file.exists()) {
+        if (!file.exists())
             return;
-        }
 
         try {
-            final Map<K, V> loadedData = objectMapper.readValue(file, new TypeReference<>() {});
+            final String content = new String(Files.readAllBytes(file.toPath()));
+            final Map<K, V> loadedMap = jsonAdapter.fromJson(content);
 
-            cache.clear();
-            cache.putAll(loadedData);
+            if (loadedMap != null) {
+                storage.clear();
+                storage.putAll(loadedMap);
+            }
         } catch (IOException e) {
-            plugin.getLogger().severe("Error loading JSON storage: " + e.getMessage());
+            plugin.getLogger().severe(e.getMessage());
         }
     }
 }

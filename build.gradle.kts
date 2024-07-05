@@ -4,11 +4,15 @@ plugins {
 }
 
 group = "com.featherservices"
-version = "1.2.0"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+}
+
+tasks.shadowJar {
+    minimize()
 }
 
 dependencies {
@@ -17,7 +21,7 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
 
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.0-rc1")
-    implementation("org.apache.commons:commons-lang3:3.14.0")
-    implementation("com.googlecode.json-simple:json-simple:1.1.1")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1")
+    implementation("com.squareup.moshi:moshi:1.15.1")
+    implementation("com.squareup.moshi:moshi-adapters:1.15.1")
 }

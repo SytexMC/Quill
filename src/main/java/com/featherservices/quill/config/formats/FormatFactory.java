@@ -30,7 +30,6 @@ public final class FormatFactory {
         factory = new FormatFactory();
 
         /* Register build-in formats */
-        factory.register(JSON.class, "application/json", "json");
         factory.register(YAML.class, "application/yaml", "yml", "yaml");
 
         return factory;

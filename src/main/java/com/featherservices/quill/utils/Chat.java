@@ -3,9 +3,12 @@ package com.featherservices.quill.utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class Chat {
     public static Component translate(String text) {
@@ -24,5 +27,33 @@ public class Chat {
         }
 
         return componentList;
+    }
+
+    public static void sendMessage(Player player, String text, Function<String, String> replace) {
+        if (text == null || text.isEmpty())
+            return;
+
+        player.sendMessage(Chat.translate(replace.apply(text)));
+    }
+
+    public static void sendMessage(Player player, String text) {
+        if (text == null || text.isEmpty())
+            return;
+
+        player.sendMessage(Chat.translate(text));
+    }
+
+    public static void sendMessage(CommandSender sender, String text, Function<String, String> replace) {
+        if (text == null || text.isEmpty())
+            return;
+
+        sender.sendMessage(Chat.translate(replace.apply(text)));
+    }
+
+    public static void sendMessage(CommandSender sender, String text) {
+        if (text == null || text.isEmpty())
+            return;
+
+        sender.sendMessage(Chat.translate(text));
     }
 }

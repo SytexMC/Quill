@@ -1,7 +1,9 @@
 package com.featherservices.quill.item;
 
 import com.featherservices.quill.utils.Chat;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -10,9 +12,11 @@ import java.util.List;
 import java.util.function.Function;
 
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class ItemWrapper {
 
-    private final Material material;
+    private Material material;
     private String name;
     private List<String> lore;
     private int amount;

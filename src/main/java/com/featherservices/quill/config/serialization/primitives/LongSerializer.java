@@ -19,4 +19,5 @@ public class LongSerializer implements Serializer<Long, Long> {
     public boolean isCompatibleWith(Class clazz) {
         return clazz.equals(Long.class) || clazz.equals(long.class);
     }
+
 }

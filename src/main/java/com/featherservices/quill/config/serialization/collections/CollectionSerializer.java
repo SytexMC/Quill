@@ -28,4 +28,5 @@ public class CollectionSerializer implements Serializer<Collection<?>, Collectio
     public boolean isCompatibleWith(Class<?> clazz) {
         return Collection.class.isAssignableFrom(clazz);
     }
+
 }

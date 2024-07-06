@@ -23,5 +23,4 @@ public class WorldSerializer implements Serializer<World, String> {
         return world.getName();
     }
 
-
 }

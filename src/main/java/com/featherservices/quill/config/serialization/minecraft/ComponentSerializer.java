@@ -16,4 +16,5 @@ public class ComponentSerializer implements Serializer<Component, String> {
     public String serialize(TypeReference typeReference, Component object) {
         return MiniMessage.miniMessage().serialize(object);
     }
+
 }

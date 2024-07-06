@@ -14,4 +14,5 @@ public class StringSerializer implements Serializer<String, String> {
     public String serialize(TypeReference type, String object) {
         return object;
     }
+
 }

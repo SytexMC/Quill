@@ -5,11 +5,13 @@ import lombok.Getter;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+
 import java.util.List;
 import java.util.function.Function;
 
 @Getter
 public class ItemWrapper {
+
     private final Material material;
     private String name;
     private List<String> lore;
@@ -70,6 +72,7 @@ public class ItemWrapper {
 
     /**
      * Builds a final item with translated name, lore and other information.
+     *
      * @return The final ItemStack.
      */
     public ItemStack build() {
@@ -91,6 +94,7 @@ public class ItemWrapper {
 
     /**
      * Builds a final item with translated name, lore and other information.
+     *
      * @param replace A replace function used to replace values in name and lore.
      * @return The final ItemStack
      */
@@ -110,4 +114,5 @@ public class ItemWrapper {
 
         return item;
     }
+
 }

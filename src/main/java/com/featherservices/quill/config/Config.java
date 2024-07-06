@@ -61,7 +61,7 @@ public abstract class Config {
     public Config(String fileName, String path) {
         this.file = new File(path, fileName);
         this.format = Format.factory().getFormatFromFileName(fileName);
-        if (this.format == null){
+        if (this.format == null) {
             throw new NullPointerException("File format " + fileName + " not found. Maybe you forgot to specify the dependency in plugin.yml?");
         }
         this.fileMap = this.format.readFile(this.file);
@@ -87,7 +87,8 @@ public abstract class Config {
     private Config getTemplate() {
         try {
             return this.getClass().getConstructor().newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             Bukkit.getLogger().log(Level.SEVERE, "Failed to create a new instance of the config class", e);
             Bukkit.getLogger().log(Level.SEVERE, "Please make sure that the config class has a default no-args constructor");
             throw new RuntimeException(e);

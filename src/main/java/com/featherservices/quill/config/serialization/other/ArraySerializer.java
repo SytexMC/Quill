@@ -25,9 +25,9 @@ public class ArraySerializer implements Serializer<Object[], Collection<?>> {
     public Object[] deserialize(TypeReference typeReference, Collection<?> serialized) {
         final Class<?> targetClass = typeReference.clazz().getComponentType();
         return serialized.stream()
-            .map(value -> Serializer.deserialize(targetClass, value))
-            .map(targetClass::cast)
-            .toArray(size -> (Object[]) Array.newInstance(targetClass, size));
+                .map(value -> Serializer.deserialize(targetClass, value))
+                .map(targetClass::cast)
+                .toArray(size -> (Object[]) Array.newInstance(targetClass, size));
     }
 
     @Override

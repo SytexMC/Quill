@@ -19,4 +19,5 @@ public class DoubleSerializer implements Serializer<Double, Double> {
     public boolean isCompatibleWith(Class clazz) {
         return clazz.equals(Double.class) || clazz.equals(double.class);
     }
+
 }

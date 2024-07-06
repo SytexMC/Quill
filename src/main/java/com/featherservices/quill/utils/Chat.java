@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 
 public class Chat {
+
     public static Component translate(String text) {
         return MiniMessage.miniMessage().deserialize(text);
     }
@@ -56,4 +57,5 @@ public class Chat {
 
         sender.sendMessage(Chat.translate(text));
     }
+
 }

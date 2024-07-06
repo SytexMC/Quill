@@ -5,25 +5,26 @@ import java.util.Map;
 
 public interface Format {
 
+    static FormatFactory factory() {
+        return FormatFactory.getFactory();
+    }
+
     /**
      * Write the map to the file
-     * @see #readFile(File)
      *
      * @param file File
-     * @param map Key-value map to be written to the file
+     * @param map  Key-value map to be written to the file
+     * @see #readFile(File)
      */
     void writeFile(File file, Map<String, Object> map);
 
     /**
      * Read the file and return the key-value map
-     * @see #writeFile(File, Map)
      *
      * @param file File
      * @return deserialized file in a form of key-value map
+     * @see #writeFile(File, Map)
      */
     Map<String, Object> readFile(File file);
 
-    static FormatFactory factory(){
-        return FormatFactory.getFactory();
-    }
 }

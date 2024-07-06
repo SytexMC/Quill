@@ -17,6 +17,7 @@ import java.util.Random;
 import java.util.UUID;
 
 public class Util {
+
     @SuppressWarnings("deprecation")
     public static ItemStack getHeadFromValue(String value) {
         final UUID id = UUID.nameUUIDFromBytes(value.getBytes());
@@ -37,8 +38,7 @@ public class Util {
         try {
             final String stringResult = engine.eval(input).toString();
             return Double.parseDouble(stringResult);
-        }
-        catch (ScriptException ex) {
+        } catch (ScriptException ex) {
             ex.printStackTrace();
         }
 
@@ -67,4 +67,5 @@ public class Util {
 
         return true;
     }
+
 }

@@ -19,5 +19,6 @@ public class BooleanSerializer implements Serializer<Boolean, Boolean> {
     public boolean isCompatibleWith(Class clazz) {
         return clazz.equals(Boolean.class) || clazz.equals(boolean.class);
     }
+
 }
 

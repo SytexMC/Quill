@@ -21,4 +21,5 @@ public class UUIDSerializer implements Serializer<UUID, String> {
     public String serialize(TypeReference type, UUID uuid) {
         return uuid.toString();
     }
+
 }

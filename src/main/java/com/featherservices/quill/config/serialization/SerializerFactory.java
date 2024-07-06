@@ -64,11 +64,11 @@ public final class SerializerFactory {
         serializers = new ArrayList<>();
     }
 
-    public <O, I> void register(Serializer<O, I> serializer){
+    public <O, I> void register(Serializer<O, I> serializer) {
         this.serializers.add(serializer);
     }
 
-    public Serializer<?, ?> get(Class<?> original){
+    public Serializer<?, ?> get(Class<?> original) {
         for (Serializer<?, ?> serializer : serializers) {
             if (serializer.isCompatibleWith(original)) {
                 return serializer;

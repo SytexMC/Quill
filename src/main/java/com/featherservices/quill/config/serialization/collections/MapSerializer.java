@@ -12,15 +12,15 @@ public class MapSerializer implements Serializer<Map<?, ?>, Map<?, ?>> {
     public Map<?, ?> deserialize(TypeReference typeReference, Map<?, ?> serialized) {
         final Class<?>[] types = this.getGenericTypes(typeReference);
         return serialized.entrySet()
-            .stream()
-            .collect(
-                HashMap::new,
-                (map, entry) -> map.put(
-                    Serializer.deserialize(types[0], entry.getKey()),
-                    Serializer.deserialize(types[1], entry.getValue())
-                ),
-                HashMap::putAll
-            );
+                .stream()
+                .collect(
+                        HashMap::new,
+                        (map, entry) -> map.put(
+                                Serializer.deserialize(types[0], entry.getKey()),
+                                Serializer.deserialize(types[1], entry.getValue())
+                        ),
+                        HashMap::putAll
+                );
     }
 
     @Override
@@ -29,8 +29,8 @@ public class MapSerializer implements Serializer<Map<?, ?>, Map<?, ?>> {
         final Map<Object, Object> serialized = new HashMap<>();
 
         map.forEach(((k, v) -> serialized.put(
-            Serializer.serialize(types[0], k),
-            Serializer.serialize(types[1], v)))
+                Serializer.serialize(types[0], k),
+                Serializer.serialize(types[1], v)))
         );
 
         return serialized;
@@ -40,4 +40,5 @@ public class MapSerializer implements Serializer<Map<?, ?>, Map<?, ?>> {
     public boolean isCompatibleWith(Class<?> clazz) {
         return Map.class.isAssignableFrom(clazz);
     }
+
 }

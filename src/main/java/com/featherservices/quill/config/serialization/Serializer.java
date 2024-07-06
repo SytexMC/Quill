@@ -6,7 +6,6 @@ import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 
 /**
- *
  * @param <T> Original type (inside a config class)
  * @param <R> Serialized type (inside a config file) [Maps, Strings, Numbers, Booleans, Collections]
  */
@@ -19,7 +18,7 @@ public interface Serializer<T, R> extends Serializable {
             return serializer.deserialize(new TypeReference(field), serialized);
         } catch (Exception exception) {
             throw new RuntimeException("Error while deserializing object of type " + serialized.getClass().getSimpleName() + " with contents: " + serialized,
-                exception);
+                    exception);
         }
     }
 
@@ -30,7 +29,7 @@ public interface Serializer<T, R> extends Serializable {
             return serializer.serialize(new TypeReference(field), serialized);
         } catch (Exception exception) {
             throw new RuntimeException("Error while serializing object of type " + serialized.getClass().getSimpleName() + " with contents: " + serialized,
-                exception);
+                    exception);
         }
     }
 
@@ -41,7 +40,7 @@ public interface Serializer<T, R> extends Serializable {
             return serializer.deserialize(new TypeReference(targetClass), serialized);
         } catch (Exception exception) {
             throw new RuntimeException("Error while deserializing object of type " + serialized.getClass().getSimpleName() + " with contents: " + serialized,
-                exception);
+                    exception);
         }
     }
 
@@ -72,8 +71,8 @@ public interface Serializer<T, R> extends Serializable {
 
         final ParameterizedType parameterizedType = (ParameterizedType) typeReference.field().getGenericType();
         return Arrays.stream(parameterizedType.getActualTypeArguments())
-            .map(type -> (Class<?>) type)
-            .toArray(Class<?>[]::new);
+                .map(type -> (Class<?>) type)
+                .toArray(Class<?>[]::new);
     }
 
 }

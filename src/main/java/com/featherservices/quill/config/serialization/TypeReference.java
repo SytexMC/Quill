@@ -27,4 +27,5 @@ public class TypeReference {
         this.clazz = object.getClass();
         this.field = null;
     }
+
 }

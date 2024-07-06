@@ -13,9 +13,9 @@ public class EnumSerializer implements Serializer<Enum, String> {
             return Enum.valueOf((Class<Enum>) typeReference.clazz(), serialized);
         } catch (IllegalArgumentException ignore) {
             final String[] existingValues = Arrays.stream(typeReference.clazz().getEnumConstants())
-                .map(en -> ((Enum) en).name())
-                .toList()
-                .toArray(new String[0]);
+                    .map(en -> ((Enum) en).name())
+                    .toList()
+                    .toArray(new String[0]);
 
             throw new IllegalArgumentException("Failed to deserialize Enum value: " + serialized + ", as it does not exist, available values: " + String.join(", ", existingValues));
         }

@@ -6,6 +6,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 public final class FormatFactory {
+
+    private static FormatFactory factory;
     /**
      * Key - File format
      * Value - MIME type
@@ -16,7 +18,6 @@ public final class FormatFactory {
      * Value - Format class
      */
     private final Map<String, Class<? extends Format>> registered;
-    private static FormatFactory factory;
 
     private FormatFactory() {
         this.formats = new HashMap<>();
@@ -45,8 +46,9 @@ public final class FormatFactory {
     /**
      * Register a new file format. Please note that if such
      * a format already exists, it will be replaced.
-     * @param format Class of {@link Format}
-     * @param mime <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types">MIME</a>
+     *
+     * @param format      Class of {@link Format}
+     * @param mime        <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types">MIME</a>
      * @param fileFormats Array of file formats (f.e.: "yml", "json")
      */
     public void register(Class<? extends Format> format, String mime, List<String> fileFormats) {
@@ -135,6 +137,7 @@ public final class FormatFactory {
 
     /**
      * Get a format from a file name
+     *
      * @param filename File name (f.e.: "config.yml", "messages.json")
      */
     @Nullable
@@ -154,6 +157,7 @@ public final class FormatFactory {
 
     /**
      * Get a format from a file type
+     *
      * @param fileType File type (f.e.: "yml", "json")
      */
     @Nullable
@@ -168,6 +172,7 @@ public final class FormatFactory {
 
     /**
      * Get a format from a mime type
+     *
      * @param mime MIME (f.e.: "application/yaml", "application/json")
      */
     @Nullable
@@ -181,8 +186,10 @@ public final class FormatFactory {
             final Constructor<? extends Format> constructor = formatClass.getConstructor();
             constructor.setAccessible(true);
             return constructor.newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             return null;
         }
     }
+
 }

@@ -14,7 +14,6 @@ import java.util.*;
 
 public class ItemStackSerializer implements Serializer<ItemStack, Map<String, Object>> {
 
-
     @Override
     public ItemStack deserialize(TypeReference typeReference, Map<String, Object> map) {
         final boolean modern = Util.isServerUsesComponents();
@@ -85,7 +84,7 @@ public class ItemStackSerializer implements Serializer<ItemStack, Map<String, Ob
         if (item.getItemMeta().hasLore()) {
             final List<String> lore = new ArrayList<>();
             List<Component> loreComponents = item.lore();
-            if(loreComponents != null){
+            if (loreComponents != null) {
                 loreComponents.forEach(component -> lore.add((String) Serializer.serialize(Component.class, component)));
             }
             map.put("lore", lore);
@@ -176,9 +175,9 @@ public class ItemStackSerializer implements Serializer<ItemStack, Map<String, Ob
 
         if (map.containsKey("lore")) {
             final List<Component> lore = ((Collection<?>) map.get("lore"))
-                .stream()
-                .map(component -> (Component) Serializer.deserialize(Component.class, component))
-                .toList();
+                    .stream()
+                    .map(component -> (Component) Serializer.deserialize(Component.class, component))
+                    .toList();
 
             itemMeta.lore(lore);
         }

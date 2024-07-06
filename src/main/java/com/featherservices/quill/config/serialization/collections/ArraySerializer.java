@@ -31,4 +31,5 @@ public class ArraySerializer implements Serializer<Object[], Collection<?>> {
     public boolean isCompatibleWith(Class<?> clazz) {
         return clazz.isArray();
     }
+
 }

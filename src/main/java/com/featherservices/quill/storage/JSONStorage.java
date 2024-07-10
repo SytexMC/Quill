@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+// todo ~ add location adapter
+
 @Getter
 public abstract class JSONStorage<K, V> {
     private final Plugin plugin;

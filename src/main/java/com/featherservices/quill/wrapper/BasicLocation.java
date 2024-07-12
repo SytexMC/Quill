@@ -1,4 +1,4 @@
-package com.featherservices.quill.utils;
+package com.featherservices.quill.wrapper;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,17 +11,17 @@ import java.util.Objects;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class SerializableLocation {
+public class BasicLocation {
     private String world;
     private double x;
     private double y;
     private double z;
 
-    public static SerializableLocation fromLocation(Location location) {
-        return new SerializableLocation(location.getWorld().getName(), location.getX(), location.getY(), location.getZ());
+    public static BasicLocation fromLocation(Location location) {
+        return new BasicLocation(location.getWorld().getName(), location.getX(), location.getY(), location.getZ());
     }
 
-    public static Location toLocation(SerializableLocation location) {
+    public static Location toLocation(BasicLocation location) {
         return new Location(Bukkit.getWorld(location.getWorld()), location.getX(), location.getY(), location.getZ());
     }
 
@@ -29,7 +29,7 @@ public class SerializableLocation {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SerializableLocation that = (SerializableLocation) o;
+        BasicLocation that = (BasicLocation) o;
         return Double.compare(x, that.x) == 0 && Double.compare(y, that.y) == 0 && Double.compare(z, that.z) == 0 && Objects.equals(world, that.world);
     }
 

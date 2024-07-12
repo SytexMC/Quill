@@ -3,7 +3,6 @@ package com.featherservices.quill.storage;
 import com.featherservices.quill.storage.adapters.UUIDAdapter;
 import com.squareup.moshi.*;
 import lombok.Getter;
-import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -13,8 +12,6 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-
-// todo ~ add location adapter
 
 @Getter
 public abstract class JSONStorage<K, V> {

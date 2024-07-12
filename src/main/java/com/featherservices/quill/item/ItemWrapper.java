@@ -15,7 +15,6 @@ import java.util.function.Function;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItemWrapper {
-
     private Material material;
     private String name;
     private List<String> lore;

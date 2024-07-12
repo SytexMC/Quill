@@ -18,16 +18,14 @@ import java.util.UUID;
 
 @Getter
 public abstract class JSONStorage<K, V> {
-    private final Plugin plugin;
     private final File file;
     private final Map<K, V> storage;
     private final Moshi moshi;
     private final JsonAdapter<Map<K, V>> jsonAdapter;
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public JSONStorage(Plugin plugin, String fileName, Class<K> keyClass, Class<V> valueClass) {
-        this.plugin = plugin;
-        this.file = new File(plugin.getDataFolder(), fileName);
+    public JSONStorage(File dataFolder, String fileName, Class<K> keyClass, Class<V> valueClass) {
+        this.file = new File(dataFolder, fileName);
         this.storage = new HashMap<>();
 
         this.moshi = new Moshi.Builder()
@@ -38,15 +36,15 @@ public abstract class JSONStorage<K, V> {
         this.jsonAdapter = moshi.adapter(type);
 
         // Ensure the data folder exists
-        if (!plugin.getDataFolder().exists())
-            plugin.getDataFolder().mkdirs();
+        if (!dataFolder.exists())
+            dataFolder.mkdirs();
     }
 
     public void save() {
         try (FileWriter writer = new FileWriter(file)) {
             writer.write(jsonAdapter.toJson(storage));
         } catch (IOException e) {
-            plugin.getLogger().severe(e.getMessage());
+            System.out.println("Quill Error -> " + e.getMessage());
         }
     }
 
@@ -63,7 +61,7 @@ public abstract class JSONStorage<K, V> {
                 storage.putAll(loadedMap);
             }
         } catch (IOException e) {
-            plugin.getLogger().severe(e.getMessage());
+            System.out.println("Quill Error -> " + e.getMessage());
         }
     }
 }

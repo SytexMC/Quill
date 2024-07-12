@@ -30,6 +30,7 @@ public class Util {
         );
     }
 
+    @Deprecated
     @SuppressWarnings("CallToPrintStackTrace")
     public static double evalEquation(String input) {
         final ScriptEngineManager mgr = new ScriptEngineManager();

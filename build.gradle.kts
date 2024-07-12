@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.featherservices"
-version = "1.3.5"
+version = "1.4.0"
 
 repositories {
     mavenCentral()

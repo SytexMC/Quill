@@ -54,8 +54,8 @@ public abstract class Config {
     private transient Format format;
     private transient Map<String, Object> fileMap;
 
-    public Config(String fileName, JavaPlugin plugin) {
-        this(fileName, plugin.getDataFolder().getPath());
+    public Config(String fileName, File dataFolder) {
+        this(fileName, dataFolder.getPath());
     }
 
     public Config(String fileName, String path) {
@@ -89,8 +89,6 @@ public abstract class Config {
             return this.getClass().getConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
                  NoSuchMethodException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "Failed to create a new instance of the config class", e);
-            Bukkit.getLogger().log(Level.SEVERE, "Please make sure that the config class has a default no-args constructor");
             throw new RuntimeException(e);
         }
     }

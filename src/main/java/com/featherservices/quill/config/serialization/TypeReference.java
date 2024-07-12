@@ -9,7 +9,6 @@ import java.lang.reflect.Field;
 @Getter
 @Accessors(fluent = true)
 public class TypeReference {
-
     private final @NonNull Class<?> clazz;
     private final Field field;
 
@@ -27,5 +26,4 @@ public class TypeReference {
         this.clazz = object.getClass();
         this.field = null;
     }
-
 }

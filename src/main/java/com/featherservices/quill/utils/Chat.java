@@ -11,13 +11,12 @@ import java.util.List;
 import java.util.function.Function;
 
 public class Chat {
-
     public static Component translate(String text) {
         return MiniMessage.miniMessage().deserialize(text);
     }
 
-    public static Component translateLegacy(String text) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
+    public static String translateLegacy(Component text) {
+        return LegacyComponentSerializer.legacyAmpersand().serialize(text);
     }
 
     public static List<Component> translate(List<String> text) {

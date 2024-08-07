@@ -1,6 +1,7 @@
 package com.featherservices.quill.item;
 
 import com.featherservices.quill.utils.Chat;
+import com.featherservices.quill.utils.Util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.function.Function;
 public class ItemWrapper {
     private Material material;
     private String name;
+    private String headId;
     private List<String> lore;
     private int amount;
     private int modelData;
@@ -73,13 +75,20 @@ public class ItemWrapper {
         return this;
     }
 
+    public ItemWrapper headId(String headId) {
+        this.headId = headId;
+
+        return this;
+    }
+
     /**
      * Builds a final item with translated name, lore and other information.
      *
      * @return The final ItemStack.
      */
     public ItemStack build() {
-        final ItemStack item = new ItemStack(material, amount);
+        final ItemStack item = headId != null && material == Material.PLAYER_HEAD ? Util.getHeadFromValue(headId) : new ItemStack(material);
+        item.setAmount(amount);
 
         item.editMeta(m -> {
             if (name != null)
@@ -102,7 +111,8 @@ public class ItemWrapper {
      * @return The final ItemStack
      */
     public ItemStack build(Function<String, String> replace) {
-        final ItemStack item = new ItemStack(material, amount);
+        final ItemStack item = headId != null && material == Material.PLAYER_HEAD ? Util.getHeadFromValue(headId) : new ItemStack(material);
+        item.setAmount(amount);
 
         item.editMeta(m -> {
             if (name != null)

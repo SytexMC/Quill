@@ -7,15 +7,11 @@ import com.featherservices.quill.config.serialization.TypeReference;
 import com.featherservices.quill.utils.Util;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
-import java.util.logging.Level;
-
 
 /**
  * A class that represents a configuration file.

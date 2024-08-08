@@ -1,7 +1,5 @@
 package com.featherservices.quill.utils;
 
-import com.featherservices.quill.config.annotations.Ignore;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -9,10 +7,6 @@ import org.bukkit.inventory.ItemStack;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -48,25 +42,6 @@ public class Util {
 
     public static int getRandomNumber(int min, int max) {
         return new Random().nextInt((max - min) + 1) + min;
-    }
-
-    public static List<Field> getFields(Object object) {
-        return Arrays.stream(FieldUtils.getAllFields(object.getClass()))
-                .filter(field -> !Modifier.isStatic(field.getModifiers()))
-                .filter(field -> !Modifier.isFinal(field.getModifiers()))
-                .filter(field -> !Modifier.isTransient(field.getModifiers()))
-                .filter(field -> !field.isAnnotationPresent(Ignore.class))
-                .toList();
-    }
-
-    public static boolean isServerUsesComponents() {
-        try {
-            Class.forName("net.kyori.adventure.text.Component");
-        } catch (ClassNotFoundException e) {
-            return false;
-        }
-
-        return true;
     }
 
 }

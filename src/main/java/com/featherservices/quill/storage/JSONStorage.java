@@ -1,5 +1,6 @@
 package com.featherservices.quill.storage;
 
+import com.featherservices.quill.storage.adapters.BooleanAdapter;
 import com.featherservices.quill.storage.adapters.UUIDAdapter;
 import com.squareup.moshi.*;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public abstract class JSONStorage<K, V> {
 
         this.moshi = new Moshi.Builder()
                 .add(UUID.class, new UUIDAdapter())
+                .add(Boolean.class, new BooleanAdapter())
                 .build();
 
         final Type type = Types.newParameterizedType(Map.class, keyClass, valueClass);

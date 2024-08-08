@@ -44,6 +44,7 @@ import java.util.Map;
  */
 @Getter
 @NoArgsConstructor
+@Deprecated
 public abstract class Config {
 
     private transient File file;

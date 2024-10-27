@@ -1,5 +1,6 @@
-package com.featherservices.quill.wrapper;
+package me.levitate.quill.wrapper;
 
+import de.exlll.configlib.Configuration;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import org.bukkit.Location;
 import java.util.Objects;
 
 @Getter
+@Configuration
 @AllArgsConstructor
 @NoArgsConstructor
 public class BasicLocation {

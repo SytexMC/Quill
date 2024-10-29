@@ -92,4 +92,16 @@ public class RandomUtils {
         
         return new Location(center.getWorld(), x, center.getY(), z);
     }
+
+    /**
+     * Returns true or false based on the percentage of chance.
+     */
+    public static boolean getChance(float percentage) {
+        if (percentage < 0.0 || percentage > 100.0) {
+            throw new IllegalArgumentException("Invalid percentage");
+        }
+
+        double randomValue = Math.random() * 100.0;
+        return randomValue <= percentage;
+    }
 }

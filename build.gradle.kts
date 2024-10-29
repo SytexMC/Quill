@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "2.1.0"
+version = "2.3.3"
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ dependencies {
 
     implementation("dev.triumphteam:triumph-gui:3.1.10")
     implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
-    implementation("de.exlll:configlib-yaml:4.5.0")
+    implementation("de.exlll:configlib-paper:4.5.0")
 }
 
 tasks.shadowJar {

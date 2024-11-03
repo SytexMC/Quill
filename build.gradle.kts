@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.0"
     id("maven-publish")
     id("java-library")
 }
@@ -34,6 +34,7 @@ dependencies {
     implementation("de.exlll:configlib-paper:4.5.0")
 }
 
+// Configure Java version compatibility
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
@@ -43,6 +44,11 @@ java {
 }
 
 tasks {
+    compileJava {
+        options.encoding = "UTF-8"
+        options.release.set(17)
+    }
+
     shadowJar {
         // Relocate dependencies to avoid conflicts
         relocate("de.exlll.configlib", "me.levitate.config")
@@ -76,14 +82,8 @@ tasks {
     jar {
         enabled = false
     }
-
-    compileJava {
-        options.encoding = "UTF-8"
-        options.compilerArgs.add("-parameters")
-    }
 }
 
-// Simple publishing configuration for JitPack
 publishing {
     publications {
         create<MavenPublication>("maven") {

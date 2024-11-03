@@ -10,6 +10,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 
@@ -44,34 +46,6 @@ public class Util {
 
     public static int getRandomNumber(int min, int max) {
         return new Random().nextInt((max - min) + 1) + min;
-    }
-
-    public static void runSync(Plugin plugin, Runnable runnable) {
-        if (Bukkit.isPrimaryThread()) {
-            runnable.run();
-            return;
-        }
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                runnable.run();
-            }
-        }.runTask(plugin);
-    }
-
-    public static void runAsync(Plugin plugin, Runnable runnable) {
-        if (!Bukkit.isPrimaryThread()) {
-            runnable.run();
-            return;
-        }
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                runnable.run();
-            }
-        }.runTaskAsynchronously(plugin);
     }
 
     public static void removeItem(Player player, Material material, int amount) {
@@ -112,5 +86,21 @@ public class Util {
         }
 
         return formattedName.toString().trim();
+    }
+
+    /**
+     * Converts a collection of UUIDs to a list of online players.
+     * Only online players will be included in the returned list.
+     *
+     * @param uuids Collection of UUIDs to convert
+     * @return List of online players corresponding to the UUIDs
+     */
+    public static List<Player> getOnlinePlayers(List<UUID> uuids) {
+        Objects.requireNonNull(uuids, "UUIDs list cannot be null");
+
+        return uuids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .toList();
     }
 }

@@ -247,4 +247,64 @@ public class Chat {
     public static void clearTitles() {
         Bukkit.getOnlinePlayers().forEach(Player::clearTitle);
     }
+
+    /**
+     * Sends a message to a list of players
+     */
+    public static void sendMessage(List<Player> players, String text, Object... placeholders) {
+        Objects.requireNonNull(players, "Players collection cannot be null");
+        players.forEach(player -> sendMessage(player, text, placeholders));
+    }
+
+    /**
+     * Sends a message to a list of UUIDs
+     */
+    public static void sendMessage(Collection<UUID> uuids, String text, Object... placeholders) {
+        Objects.requireNonNull(uuids, "UUIDs collection cannot be null");
+        uuids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .forEach(player -> sendMessage(player, text, placeholders));
+    }
+
+    /**
+     * Sends a message to a player by UUID
+     */
+    public static void sendMessage(UUID uuid, String text, Object... placeholders) {
+        Objects.requireNonNull(uuid, "UUID cannot be null");
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            sendMessage(player, text, placeholders);
+        }
+    }
+
+    /**
+     * Sends multiple messages to a list of players
+     */
+    public static void sendMessages(List<Player> players, List<String> messages, Object... placeholders) {
+        Objects.requireNonNull(players, "Players list cannot be null");
+        players.forEach(player -> sendMessages(player, messages, placeholders));
+    }
+
+    /**
+     * Sends multiple messages to a list of UUIDs
+     */
+    public static void sendMessages(Collection<UUID> uuids, List<String> messages, Object... placeholders) {
+        Objects.requireNonNull(uuids, "UUIDs collection cannot be null");
+        uuids.stream()
+                .map(Bukkit::getPlayer)
+                .filter(Objects::nonNull)
+                .forEach(player -> sendMessages(player, messages, placeholders));
+    }
+
+    /**
+     * Sends multiple messages to a player by UUID
+     */
+    public static void sendMessages(UUID uuid, List<String> messages, Object... placeholders) {
+        Objects.requireNonNull(uuid, "UUID cannot be null");
+        Player player = Bukkit.getPlayer(uuid);
+        if (player != null) {
+            sendMessages(player, messages, placeholders);
+        }
+    }
 }

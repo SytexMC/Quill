@@ -4,19 +4,14 @@ import de.exlll.configlib.Configuration;
 import lombok.Getter;
 import me.levitate.quill.chat.Chat;
 import me.levitate.quill.utils.ItemUtils;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Damageable;
-import org.bukkit.inventory.FurnaceRecipe;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -41,15 +36,6 @@ public class ItemWrapper {
     private boolean unbreakable;
     private Integer customDurability;
     private Map<String, Object> persistentData;
-
-    // Recipe-related fields
-    private String[] shapedPattern;
-    private Map<Character, Object> shapedIngredients;
-    private List<Object> shapelessIngredients;
-    private Object furnaceInput;
-    private float furnaceExperience;
-    private int furnaceCookingTime;
-    private String recipeId;
 
     public ItemWrapper() {
     }
@@ -178,119 +164,6 @@ public class ItemWrapper {
         }
 
         return data;
-    }
-
-    /**
-     * Sets a specific ID for the recipe. If not set, a random UUID will be used.
-     * @param recipeId The ID to use for the recipe
-     * @return The ItemWrapper instance
-     */
-    public ItemWrapper setRecipeId(String recipeId) {
-        this.recipeId = recipeId;
-        return this;
-    }
-
-    /**
-     * Sets a shaped crafting recipe for the item
-     * @param pattern Array of 3 strings representing the crafting pattern
-     * @param ingredients Map of characters to Materials or ItemStacks
-     * @return The ItemWrapper instance
-     */
-    public ItemWrapper setShapedRecipe(String[] pattern, Map<Character, Object> ingredients) {
-        if (pattern.length != 3) {
-            throw new IllegalArgumentException("Pattern must be exactly 3 rows");
-        }
-        this.shapedPattern = pattern;
-        this.shapedIngredients = ingredients;
-        return this;
-    }
-
-    /**
-     * Sets a shapeless crafting recipe for the item
-     * @param ingredients List of Materials or ItemStacks needed to craft the item
-     * @return The ItemWrapper instance
-     */
-    public ItemWrapper setShapelessRecipe(List<Object> ingredients) {
-        this.shapelessIngredients = ingredients;
-        return this;
-    }
-
-    /**
-     * Sets a furnace recipe for the item
-     * @param input Material or ItemStack to be smelted
-     * @param experience Experience given when smelting
-     * @param cookingTime Time in ticks to cook
-     * @return The ItemWrapper instance
-     */
-    public ItemWrapper setFurnaceRecipe(Object input, float experience, int cookingTime) {
-        this.furnaceInput = input;
-        this.furnaceExperience = experience;
-        this.furnaceCookingTime = cookingTime;
-        return this;
-    }
-
-    private RecipeChoice getRecipeChoice(Object ingredient) {
-        if (ingredient instanceof Material) {
-            return new RecipeChoice.MaterialChoice((Material) ingredient);
-        } else if (ingredient instanceof ItemStack) {
-            return new RecipeChoice.ExactChoice((ItemStack) ingredient);
-        } else {
-            throw new IllegalArgumentException("Recipe ingredient must be either Material or ItemStack");
-        }
-    }
-
-    /**
-     * Registers all defined recipes for this item
-     */
-    public void registerRecipes() {
-        if (plugin == null) {
-            throw new IllegalStateException("Plugin must be set to register recipes");
-        }
-
-        String baseId = recipeId != null ? recipeId : UUID.randomUUID().toString();
-        ItemStack result = this.build();
-
-        // Register shaped recipe if defined
-        if (shapedPattern != null && shapedIngredients != null) {
-            ShapedRecipe shapedRecipe = new ShapedRecipe(new NamespacedKey(plugin, baseId + "_shaped"), result);
-            shapedRecipe.shape(shapedPattern);
-            shapedIngredients.forEach((key, ingredient) ->
-                    shapedRecipe.setIngredient(key, getRecipeChoice(ingredient)));
-            plugin.getServer().addRecipe(shapedRecipe);
-        }
-
-        // Register shapeless recipe if defined
-        if (shapelessIngredients != null && !shapelessIngredients.isEmpty()) {
-            ShapelessRecipe shapelessRecipe = new ShapelessRecipe(new NamespacedKey(plugin, baseId + "_shapeless"), result);
-            shapelessIngredients.forEach(ingredient ->
-                    shapelessRecipe.addIngredient(getRecipeChoice(ingredient)));
-            plugin.getServer().addRecipe(shapelessRecipe);
-        }
-
-        // Register furnace recipe if defined
-        if (furnaceInput != null) {
-            FurnaceRecipe furnaceRecipe = new FurnaceRecipe(
-                    new NamespacedKey(plugin, baseId + "_furnace"),
-                    result,
-                    getRecipeChoice(furnaceInput),
-                    furnaceExperience,
-                    furnaceCookingTime
-            );
-            plugin.getServer().addRecipe(furnaceRecipe);
-        }
-    }
-
-    /**
-     * Unregisters all recipes for this item
-     */
-    public void unregisterRecipes() {
-        if (plugin == null || recipeId == null) {
-            return;
-        }
-
-        plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_shaped"));
-        plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_shapeless"));
-        plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_furnace"));
     }
 
     public ItemStack build(Object... placeholders) {

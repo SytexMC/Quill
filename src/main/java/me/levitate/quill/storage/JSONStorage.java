@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import lombok.Getter;
 import me.levitate.quill.serializers.JSONSerializers;
 import org.bukkit.plugin.Plugin;
 
@@ -18,6 +19,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class JSONStorage<K, V> {
+    @Getter
     private final Map<K, V> storage;
     private final ObjectMapper mapper;
     private final SimpleModule module;

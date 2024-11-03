@@ -1,6 +1,8 @@
 plugins {
     id("java")
-    id("com.gradleup.shadow") version "8.3.0"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("maven-publish")
+    id("java-library")
 }
 
 group = "me.levitate"
@@ -8,7 +10,6 @@ version = "2.5.0"
 
 repositories {
     mavenCentral()
-
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.codemc.io/repository/maven-public/")
@@ -33,9 +34,66 @@ dependencies {
     implementation("de.exlll:configlib-paper:4.5.0")
 }
 
-tasks.shadowJar {
-    relocate("de.exlll.configlib", "me.levitate.config")
-    relocate("co.aikar.commands", "me.levitate.acf")
-    relocate("co.aikar.locales", "me.levitate.locales")
-    relocate("dev.triumphteam.gui", "me.levitate.gui")
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+tasks {
+    shadowJar {
+        // Relocate dependencies to avoid conflicts
+        relocate("de.exlll.configlib", "me.levitate.config")
+        relocate("co.aikar.commands", "me.levitate.acf")
+        relocate("co.aikar.locales", "me.levitate.locales")
+        relocate("dev.triumphteam.gui", "me.levitate.gui")
+        relocate("com.fasterxml.jackson", "me.levitate.jackson")
+
+        archiveClassifier.set("")
+        minimize()
+    }
+
+    javadoc {
+        options {
+            (this as StandardJavadocDocletOptions).apply {
+                addStringOption("Xdoclint:none", "-quiet")
+                addStringOption("encoding", "UTF-8")
+                addStringOption("charSet", "UTF-8")
+                addBooleanOption("html5", true)
+                links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+                links("https://jd.papermc.io/paper/1.20/")
+            }
+        }
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
+
+    // Disable default jar task
+    jar {
+        enabled = false
+    }
+
+    compileJava {
+        options.encoding = "UTF-8"
+        options.compilerArgs.add("-parameters")
+    }
+}
+
+// Simple publishing configuration for JitPack
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = project.group.toString()
+            artifactId = project.name
+            version = project.version.toString()
+
+            artifact(tasks["shadowJar"])
+            artifact(tasks["javadocJar"])
+            artifact(tasks["sourcesJar"])
+        }
+    }
 }

@@ -31,7 +31,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.github.YourUsername:Quill:VERSION")
+    compileOnly("com.github.xLevitate:Quill:2.6.0")
 }
 ```
 
@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'com.github.YourUsername:Quill:VERSION'
+    compileOnly 'com.github.xLevitate:Quill:2.6.0'
 }
 ```
 
@@ -57,9 +57,9 @@ dependencies {
 
 <dependencies>
     <dependency>
-        <groupId>com.github.YourUsername</groupId>
+        <groupId>com.github.xLevitate</groupId>
         <artifactId>Quill</artifactId>
-        <version>VERSION</version>
+        <version>2.6.0</version>
         <scope>provided</scope>
     </dependency>
 </dependencies>

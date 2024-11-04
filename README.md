@@ -18,7 +18,7 @@ Quill is a comprehensive utility library for Paper plugins, providing a wide ran
 
 ### 1. Server Installation
 First, download and install the Quill plugin on your server:
-1. Download the latest version from [Releases](https://github.com/YourUsername/Quill/releases)
+1. Download the latest version from [Releases](https://github.com/xLevitate/Quill/releases)
 2. Place the JAR file in your server's `plugins` folder
 3. Restart your server
 
@@ -113,7 +113,7 @@ Events.listen(plugin, PlayerJoinEvent.class)
 
 ## Documentation
 
-For detailed documentation, please visit our [Wiki](https://github.com/YourUsername/Quill/wiki).
+For detailed documentation, please visit our [Wiki](https://github.com/xLevitate/Quill/wiki).
 
 ## Requirements
 
@@ -125,8 +125,8 @@ For detailed documentation, please visit our [Wiki](https://github.com/YourUsern
 ## Support
 
 If you encounter any issues or have questions:
-1. Check the [Wiki](https://github.com/YourUsername/Quill/wiki)
-2. Open an [Issue](https://github.com/YourUsername/Quill/issues)
+1. Check the [Wiki](https://github.com/xLevitate/Quill/wiki)
+2. Open an [Issue](https://github.com/xLevitate/Quill/issues)
 
 ## Contributing
 

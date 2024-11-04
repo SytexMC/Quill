@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+@Deprecated
 public class ConfigProvider {
     private final Plugin plugin;
     private final Map<Class<?>, Object> configs = new HashMap<>();

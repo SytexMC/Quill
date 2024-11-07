@@ -16,8 +16,8 @@ public class QuillBoard {
     private final List<String> lines;
     private String title;
     private int updateInterval;
-    private boolean placeholderSupport;
     private int taskId = -1;
+    private final Map<UUID, Scoreboard> playerPreviousScoreboards = new ConcurrentHashMap<>();
 
     private QuillBoard(Plugin plugin, String title) {
         this.plugin = plugin;
@@ -25,37 +25,24 @@ public class QuillBoard {
         this.viewers = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.lines = new ArrayList<>();
         this.updateInterval = 20;
-        this.placeholderSupport = true;
     }
 
-    /**
-     * Create a new scoreboard
-     */
     public static Builder builder(Plugin plugin) {
         return new Builder(plugin);
     }
 
-    /**
-     * Add a line to the scoreboard
-     */
     public QuillBoard addLine(String line) {
         lines.add(line);
         update();
         return this;
     }
 
-    /**
-     * Set all lines at once
-     */
     public void setLines(List<String> lines) {
         this.lines.clear();
         this.lines.addAll(lines);
         update();
     }
 
-    /**
-     * Remove a specific line
-     */
     public QuillBoard removeLine(int index) {
         if (index >= 0 && index < lines.size()) {
             lines.remove(index);
@@ -64,61 +51,58 @@ public class QuillBoard {
         return this;
     }
 
-    /**
-     * Clear all lines
-     */
     public QuillBoard clearLines() {
         lines.clear();
         update();
         return this;
     }
 
-    /**
-     * Set the title
-     */
     public QuillBoard setTitle(String title) {
         this.title = title;
         update();
         return this;
     }
 
-    /**
-     * Add a viewer to the scoreboard
-     */
     public QuillBoard addViewer(Player player) {
-        viewers.add(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+
+        // Store the player's current scoreboard if they have one
+        Scoreboard currentScoreboard = player.getScoreboard();
+
+        // Only set their previous scoreboard if it's not the main/default one
+        if (currentScoreboard != Bukkit.getScoreboardManager().getMainScoreboard()) {
+            playerPreviousScoreboards.put(uuid, currentScoreboard);
+        }
+
+        viewers.add(uuid);
         updatePlayer(player);
         return this;
     }
 
-    /**
-     * Add multiple viewers
-     */
     public QuillBoard addViewers(Collection<? extends Player> players) {
-        players.forEach(player -> viewers.add(player.getUniqueId()));
-        update();
+        players.forEach(this::addViewer);
         return this;
     }
 
-    /**
-     * Remove a viewer
-     */
     public void removeViewer(Player player) {
-        viewers.remove(player.getUniqueId());
-        player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        UUID uuid = player.getUniqueId();
+        viewers.remove(uuid);
+
+        // Restore their previous scoreboard if they had one
+        Scoreboard previousScoreboard = playerPreviousScoreboards.remove(uuid);
+        if (previousScoreboard != null) {
+            player.setScoreboard(previousScoreboard);
+        } else {
+            // If no previous scoreboard, set to main scoreboard
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        }
     }
 
-    /**
-     * Remove multiple viewers
-     */
     public QuillBoard removeViewers(Collection<? extends Player> players) {
         players.forEach(this::removeViewer);
         return this;
     }
 
-    /**
-     * Get current viewers
-     */
     public Set<Player> getViewers() {
         Set<Player> players = new HashSet<>();
         for (UUID uuid : viewers) {
@@ -130,25 +114,61 @@ public class QuillBoard {
         return Collections.unmodifiableSet(players);
     }
 
-    /**
-     * Update the scoreboard for all viewers
-     */
     public void update() {
-        getViewers().forEach(this::updatePlayer);
+        for (UUID uuid : new HashSet<>(viewers)) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && player.isOnline()) {
+                updatePlayer(player);
+            } else {
+                viewers.remove(uuid);
+                playerPreviousScoreboards.remove(uuid);
+            }
+        }
     }
 
-    /**
-     * Start auto-updating
-     */
+    private void updatePlayer(Player player) {
+        if (!player.isOnline()) return;
+
+        ScoreboardManager manager = Bukkit.getScoreboardManager();
+
+        Scoreboard scoreboard = manager.getNewScoreboard();
+        Objective objective = scoreboard.registerNewObjective(
+                "sidebar",
+                Criteria.DUMMY,
+                Chat.translate(title)
+        );
+        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        // Use a reverse counter to ensure correct order
+        int score = lines.size();
+        for (String line : new ArrayList<>(lines)) {
+            String coloredLine = Chat.colorize(line);
+            // Ensure unique lines by adding invisible characters if needed
+            if (coloredLine.length() > 40) {
+                coloredLine = coloredLine.substring(0, 40);
+            }
+            Team team = scoreboard.registerNewTeam("line_" + score);
+            String entry = getUniqueEntry(score);
+            team.addEntry(entry);
+            team.prefix(Chat.translate(line));
+            objective.getScore(entry).setScore(score);
+            score--;
+        }
+
+        player.setScoreboard(scoreboard);
+    }
+
+    private String getUniqueEntry(int score) {
+        // Create unique entries using color codes
+        return "§" + (score > 9 ? String.valueOf((char)('a' + score - 10)) : String.valueOf(score));
+    }
+
     public void start() {
         if (taskId == -1) {
             taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::update, 0, updateInterval).getTaskId();
         }
     }
 
-    /**
-     * Stop auto-updating
-     */
     public void stop() {
         if (taskId != -1) {
             Bukkit.getScheduler().cancelTask(taskId);
@@ -156,46 +176,24 @@ public class QuillBoard {
         }
     }
 
-    /**
-     * Destroy this scoreboard
-     */
     public void destroy() {
         stop();
-        new HashSet<>(getViewers()).forEach(this::removeViewer);
+        for (UUID uuid : new HashSet<>(viewers)) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                removeViewer(player);
+            }
+        }
         viewers.clear();
         lines.clear();
-    }
-
-    private void updatePlayer(Player player) {
-        if (!player.isOnline()) return;
-
-        Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
-        Objective objective = scoreboard.registerNewObjective(
-                "sidebar",
-                Criteria.DUMMY,
-                Chat.translate(processText(player, title))
-        );
-        objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-
-        int score = lines.size();
-        for (String line : lines) {
-            String processedLine = processText(player, line);
-            objective.getScore(processedLine).setScore(score--);
-        }
-
-        player.setScoreboard(scoreboard);
-    }
-
-    private String processText(Player player, String text) {
-        return placeholderSupport ? PlaceholderFactory.setPlaceholders(player, text) : text;
+        playerPreviousScoreboards.clear();
     }
 
     public static class Builder {
         private final Plugin plugin;
         private String title = "Scoreboard";
-        private List<String> lines = new ArrayList<>();
+        private final List<String> lines = new ArrayList<>();
         private int updateInterval = 20;
-        private boolean placeholderSupport = true;
 
         private Builder(Plugin plugin) {
             this.plugin = plugin;
@@ -207,7 +205,8 @@ public class QuillBoard {
         }
 
         public Builder lines(List<String> lines) {
-            this.lines = new ArrayList<>(lines);
+            this.lines.clear();
+            this.lines.addAll(lines);
             return this;
         }
 
@@ -221,17 +220,11 @@ public class QuillBoard {
             return this;
         }
 
-        public Builder placeholderSupport(boolean enabled) {
-            this.placeholderSupport = enabled;
-            return this;
-        }
-
         public QuillBoard build() {
-            QuillBoard quillBoard = new QuillBoard(plugin, title);
-            quillBoard.setLines(lines);
-            quillBoard.updateInterval = updateInterval;
-            quillBoard.placeholderSupport = placeholderSupport;
-            return quillBoard;
+            QuillBoard board = new QuillBoard(plugin, title);
+            board.setLines(lines);
+            board.updateInterval = updateInterval;
+            return board;
         }
     }
 }

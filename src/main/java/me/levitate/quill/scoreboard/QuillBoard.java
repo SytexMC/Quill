@@ -10,6 +10,10 @@ import org.bukkit.scoreboard.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * A powerful and flexible scoreboard manager for Bukkit/Spigot plugins.
+ * Supports dynamic updates, PlaceholderAPI, and automatic cleanup.
+ */
 public class QuillBoard {
     private final Plugin plugin;
     private final Set<UUID> viewers;
@@ -17,6 +21,7 @@ public class QuillBoard {
     private String title;
     private int updateInterval;
     private int taskId = -1;
+    private boolean placeholderSupport;
     private final Map<UUID, Scoreboard> playerPreviousScoreboards = new ConcurrentHashMap<>();
 
     private QuillBoard(Plugin plugin, String title) {
@@ -25,24 +30,44 @@ public class QuillBoard {
         this.viewers = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.lines = new ArrayList<>();
         this.updateInterval = 20;
+        this.placeholderSupport = true;
     }
 
+    /**
+     * Create a new scoreboard builder
+     * @param plugin Your plugin instance
+     * @return A new builder instance
+     */
     public static Builder builder(Plugin plugin) {
         return new Builder(plugin);
     }
 
+    /**
+     * Add a line to the scoreboard
+     * @param line The text to add
+     * @return This instance for chaining
+     */
     public QuillBoard addLine(String line) {
         lines.add(line);
         update();
         return this;
     }
 
+    /**
+     * Set all lines at once
+     * @param lines The list of lines to set
+     */
     public void setLines(List<String> lines) {
         this.lines.clear();
         this.lines.addAll(lines);
         update();
     }
 
+    /**
+     * Remove a specific line
+     * @param index The index of the line to remove
+     * @return This instance for chaining
+     */
     public QuillBoard removeLine(int index) {
         if (index >= 0 && index < lines.size()) {
             lines.remove(index);
@@ -51,18 +76,32 @@ public class QuillBoard {
         return this;
     }
 
+    /**
+     * Clear all lines
+     * @return This instance for chaining
+     */
     public QuillBoard clearLines() {
         lines.clear();
         update();
         return this;
     }
 
+    /**
+     * Set the scoreboard title
+     * @param title The new title
+     * @return This instance for chaining
+     */
     public QuillBoard setTitle(String title) {
         this.title = title;
         update();
         return this;
     }
 
+    /**
+     * Add a viewer to the scoreboard
+     * @param player The player to add
+     * @return This instance for chaining
+     */
     public QuillBoard addViewer(Player player) {
         UUID uuid = player.getUniqueId();
 
@@ -79,11 +118,20 @@ public class QuillBoard {
         return this;
     }
 
+    /**
+     * Add multiple viewers to the scoreboard
+     * @param players Collection of players to add
+     * @return This instance for chaining
+     */
     public QuillBoard addViewers(Collection<? extends Player> players) {
         players.forEach(this::addViewer);
         return this;
     }
 
+    /**
+     * Remove a viewer from the scoreboard
+     * @param player The player to remove
+     */
     public void removeViewer(Player player) {
         UUID uuid = player.getUniqueId();
         viewers.remove(uuid);
@@ -98,11 +146,20 @@ public class QuillBoard {
         }
     }
 
+    /**
+     * Remove multiple viewers from the scoreboard
+     * @param players Collection of players to remove
+     * @return This instance for chaining
+     */
     public QuillBoard removeViewers(Collection<? extends Player> players) {
         players.forEach(this::removeViewer);
         return this;
     }
 
+    /**
+     * Get all current viewers of this scoreboard
+     * @return Set of players currently viewing the scoreboard
+     */
     public Set<Player> getViewers() {
         Set<Player> players = new HashSet<>();
         for (UUID uuid : viewers) {
@@ -114,6 +171,9 @@ public class QuillBoard {
         return Collections.unmodifiableSet(players);
     }
 
+    /**
+     * Update the scoreboard for all viewers
+     */
     public void update() {
         for (UUID uuid : new HashSet<>(viewers)) {
             Player player = Bukkit.getPlayer(uuid);
@@ -130,27 +190,28 @@ public class QuillBoard {
         if (!player.isOnline()) return;
 
         ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager == null) return;
 
         Scoreboard scoreboard = manager.getNewScoreboard();
         Objective objective = scoreboard.registerNewObjective(
                 "sidebar",
                 Criteria.DUMMY,
-                Chat.translate(title)
+                Chat.translate(processText(player, title))
         );
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         // Use a reverse counter to ensure correct order
         int score = lines.size();
         for (String line : new ArrayList<>(lines)) {
-            String coloredLine = Chat.colorize(line);
+            String processedLine = processText(player, line);
             // Ensure unique lines by adding invisible characters if needed
-            if (coloredLine.length() > 40) {
-                coloredLine = coloredLine.substring(0, 40);
+            if (processedLine.length() > 40) {
+                processedLine = processedLine.substring(0, 40);
             }
             Team team = scoreboard.registerNewTeam("line_" + score);
             String entry = getUniqueEntry(score);
             team.addEntry(entry);
-            team.prefix(Chat.translate(line));
+            team.prefix(Chat.translate(processedLine));
             objective.getScore(entry).setScore(score);
             score--;
         }
@@ -158,17 +219,26 @@ public class QuillBoard {
         player.setScoreboard(scoreboard);
     }
 
+    private String processText(Player player, String text) {
+        return placeholderSupport ? PlaceholderFactory.setPlaceholders(player, text) : text;
+    }
+
     private String getUniqueEntry(int score) {
-        // Create unique entries using color codes
         return "§" + (score > 9 ? String.valueOf((char)('a' + score - 10)) : String.valueOf(score));
     }
 
+    /**
+     * Start automatic updates
+     */
     public void start() {
         if (taskId == -1) {
             taskId = Bukkit.getScheduler().runTaskTimer(plugin, this::update, 0, updateInterval).getTaskId();
         }
     }
 
+    /**
+     * Stop automatic updates
+     */
     public void stop() {
         if (taskId != -1) {
             Bukkit.getScheduler().cancelTask(taskId);
@@ -176,6 +246,9 @@ public class QuillBoard {
         }
     }
 
+    /**
+     * Destroy this scoreboard and clean up resources
+     */
     public void destroy() {
         stop();
         for (UUID uuid : new HashSet<>(viewers)) {
@@ -189,41 +262,80 @@ public class QuillBoard {
         playerPreviousScoreboards.clear();
     }
 
+    /**
+     * Builder class for creating new scoreboards
+     */
     public static class Builder {
         private final Plugin plugin;
         private String title = "Scoreboard";
         private final List<String> lines = new ArrayList<>();
         private int updateInterval = 20;
+        private boolean placeholderSupport = true;
 
         private Builder(Plugin plugin) {
             this.plugin = plugin;
         }
 
+        /**
+         * Set the scoreboard title
+         * @param title The title to set
+         * @return This builder instance
+         */
         public Builder title(String title) {
             this.title = title;
             return this;
         }
 
+        /**
+         * Set all lines at once
+         * @param lines The lines to set
+         * @return This builder instance
+         */
         public Builder lines(List<String> lines) {
             this.lines.clear();
             this.lines.addAll(lines);
             return this;
         }
 
+        /**
+         * Add a single line
+         * @param line The line to add
+         * @return This builder instance
+         */
         public Builder addLine(String line) {
             this.lines.add(line);
             return this;
         }
 
+        /**
+         * Set the update interval in ticks
+         * @param ticks The interval in ticks
+         * @return This builder instance
+         */
         public Builder updateInterval(int ticks) {
             this.updateInterval = ticks;
             return this;
         }
 
+        /**
+         * Enable or disable PlaceholderAPI support
+         * @param enabled Whether to enable PlaceholderAPI support
+         * @return This builder instance
+         */
+        public Builder placeholderSupport(boolean enabled) {
+            this.placeholderSupport = enabled;
+            return this;
+        }
+
+        /**
+         * Build the scoreboard
+         * @return A new QuillBoard instance
+         */
         public QuillBoard build() {
             QuillBoard board = new QuillBoard(plugin, title);
             board.setLines(lines);
             board.updateInterval = updateInterval;
+            board.placeholderSupport = placeholderSupport;
             return board;
         }
     }

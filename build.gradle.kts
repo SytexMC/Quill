@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "2.6.3"
+version = "2.6.4"
 
 repositories {
     mavenCentral()
@@ -35,7 +35,6 @@ dependencies {
     api("co.aikar:acf-paper:0.5.1-SNAPSHOT")
 }
 
-// Configure Java version compatibility
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
@@ -45,13 +44,20 @@ java {
 }
 
 tasks {
+    processResources {
+        filesMatching("plugin.yml") {
+            expand(
+                "version" to project.version
+            )
+        }
+    }
+
     compileJava {
         options.encoding = "UTF-8"
         options.release.set(17)
     }
 
     shadowJar {
-        // Relocate dependencies to avoid conflicts
         relocate("de.exlll.configlib", "me.levitate.config")
         relocate("co.aikar.commands", "me.levitate.acf")
         relocate("co.aikar.locales", "me.levitate.locales")
@@ -62,24 +68,10 @@ tasks {
         minimize()
     }
 
-    javadoc {
-        options {
-            (this as StandardJavadocDocletOptions).apply {
-                addStringOption("Xdoclint:none", "-quiet")
-                addStringOption("encoding", "UTF-8")
-                addStringOption("charSet", "UTF-8")
-                addBooleanOption("html5", true)
-                links("https://docs.oracle.com/en/java/javase/17/docs/api/")
-                links("https://jd.papermc.io/paper/1.20/")
-            }
-        }
-    }
-
     build {
         dependsOn(shadowJar)
     }
 
-    // Disable default jar task
     jar {
         enabled = false
     }
@@ -96,5 +88,9 @@ publishing {
             artifact(tasks["javadocJar"])
             artifact(tasks["sourcesJar"])
         }
+    }
+
+    repositories {
+        mavenLocal()
     }
 }

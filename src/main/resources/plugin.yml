@@ -1,5 +1,5 @@
 name: Quill
-version: 2.5.0
+version: ${version}
 main: me.levitate.quill.Quill
 api-version: '1.13'
 softdepend: [PlaceholderAPI, Vault]

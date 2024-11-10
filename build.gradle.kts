@@ -57,6 +57,19 @@ tasks {
         options.release.set(17)
     }
 
+    javadoc {
+        options {
+            (this as StandardJavadocDocletOptions).apply {
+                addStringOption("Xdoclint:none", "-quiet")
+                addStringOption("encoding", "UTF-8")
+                addStringOption("charSet", "UTF-8")
+                addBooleanOption("html5", true)
+                links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+                links("https://jd.papermc.io/paper/1.20/")
+            }
+        }
+    }
+
     shadowJar {
         relocate("de.exlll.configlib", "me.levitate.config")
         relocate("co.aikar.commands", "me.levitate.acf")

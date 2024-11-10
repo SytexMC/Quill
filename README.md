@@ -23,6 +23,7 @@ First, download and install the Quill plugin on your server:
 3. Restart your server
 
 ### 2. Development Integration
+Make sure you use the latest version, which can be found at the top of this readme.
 
 #### Gradle (Kotlin DSL)
 ```kotlin

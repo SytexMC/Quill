@@ -1,8 +1,8 @@
-
-package me.levitate.quill.hook;
+package me.levitate.quill.hook.hooks;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import me.levitate.quill.hook.PluginHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -13,7 +13,39 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-public class PlaceholderFactory {
+public class PlaceholderFactory implements PluginHook {
+    private static PlaceholderFactory instance;
+    private boolean enabled = false;
+
+    public PlaceholderFactory() {}
+
+    public static PlaceholderFactory getInstance() {
+        if (instance == null) {
+            instance = new PlaceholderFactory();
+        }
+        return instance;
+    }
+
+    @Override
+    public boolean init() {
+        if (Bukkit.getPluginManager().getPlugin(getPluginName()) != null) {
+            enabled = true;
+            instance = this;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public String getPluginName() {
+        return "PlaceholderAPI";
+    }
+
     private static class DynamicExpansion extends PlaceholderExpansion {
         private final String identifier;
         private final String author;
@@ -70,7 +102,10 @@ public class PlaceholderFactory {
      * @return A builder to register placeholders
      */
     public static PlaceholderBuilder create(Plugin plugin, String identifier) {
-        return create(identifier, plugin.getDescription().getAuthors().get(0), plugin.getDescription().getVersion());
+        if (instance == null || !instance.enabled) return null;
+
+        final String author = plugin.getDescription().getAuthors().get(0);
+        return create(identifier, author != null ? author : "Quill", plugin.getDescription().getVersion());
     }
 
     /**
@@ -82,10 +117,10 @@ public class PlaceholderFactory {
      * @return A builder to register placeholders
      */
     public static PlaceholderBuilder create(String identifier, String author, String version) {
+        if (instance == null || !instance.enabled) return null;
         return new PlaceholderBuilder(identifier, author, version);
     }
 
-    // Utility methods for setting placeholders
     /**
      * Sets placeholders in a text for a player.
      * @param player The player to set placeholders for
@@ -93,8 +128,7 @@ public class PlaceholderFactory {
      * @return The text with placeholders replaced
      */
     public static String setPlaceholders(Player player, String text) {
-        if (!isEnabled() || text == null) return text;
-
+        if (instance == null || !instance.enabled || text == null) return text;
         return PlaceholderAPI.setPlaceholders(player, text);
     }
 
@@ -106,17 +140,8 @@ public class PlaceholderFactory {
      * @return The text with relational placeholders replaced
      */
     public static String setRelationalPlaceholders(Player one, Player two, String text) {
-        if (!isEnabled() || text == null) return text;
-
+        if (instance == null || !instance.enabled || text == null) return text;
         return PlaceholderAPI.setRelationalPlaceholders(one, two, text);
-    }
-
-    /**
-     * Checks if PlaceholderAPI is installed and enabled.
-     * @return true if PlaceholderAPI is available
-     */
-    public static boolean isEnabled() {
-        return Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
     }
 
     public static class PlaceholderBuilder {

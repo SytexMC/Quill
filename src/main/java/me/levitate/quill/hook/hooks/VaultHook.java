@@ -1,6 +1,6 @@
-package me.levitate.quill.hook;
+package me.levitate.quill.hook.hooks;
 
-import lombok.Getter;
+import me.levitate.quill.hook.PluginHook;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
@@ -8,42 +8,46 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-public class VaultHook {
-    @Getter
+public class VaultHook implements PluginHook {
     private static Economy economy;
-    private static boolean enabled = false;
+    private boolean enabled = false;
 
-    public static boolean init() {
-        if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
-            return false;
-        }
-
+    @Override
+    public boolean init() {
         RegisteredServiceProvider<Economy> rsp = Bukkit.getServicesManager().getRegistration(Economy.class);
-        if (rsp == null) {
-            return false;
-        }
+        if (rsp == null) return false;
 
         economy = rsp.getProvider();
         enabled = true;
         return true;
     }
 
-    public static boolean hasBalance(OfflinePlayer player, double amount) {
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public String getPluginName() {
+        return "Vault";
+    }
+
+    public boolean hasBalance(OfflinePlayer player, double amount) {
         return enabled && economy != null && economy.has(player, amount);
     }
 
-    public static double getBalance(OfflinePlayer player) {
+    public double getBalance(OfflinePlayer player) {
         if (!enabled || economy == null) return 0.0;
         return economy.getBalance(player);
     }
 
-    public static boolean giveMoney(OfflinePlayer player, double amount) {
+    public boolean giveMoney(OfflinePlayer player, double amount) {
         if (!enabled || economy == null || amount < 0) return false;
         EconomyResponse response = economy.depositPlayer(player, amount);
         return response.transactionSuccess();
     }
 
-    public static boolean takeMoney(OfflinePlayer player, double amount) {
+    public boolean takeMoney(OfflinePlayer player, double amount) {
         if (!enabled || economy == null || amount < 0) return false;
         if (!hasBalance(player, amount)) return false;
 
@@ -51,7 +55,7 @@ public class VaultHook {
         return response.transactionSuccess();
     }
 
-    public static boolean transferMoney(OfflinePlayer from, OfflinePlayer to, double amount) {
+    public boolean transferMoney(OfflinePlayer from, OfflinePlayer to, double amount) {
         if (!enabled || economy == null || amount < 0) return false;
         if (!hasBalance(from, amount)) return false;
 
@@ -66,7 +70,7 @@ public class VaultHook {
         return false;
     }
 
-    public static void tryPurchase(Player player, double cost, Runnable successAction, Runnable failureAction) {
+    public void tryPurchase(Player player, double cost, Runnable successAction, Runnable failureAction) {
         if (!enabled || economy == null) {
             failureAction.run();
             return;
@@ -79,16 +83,12 @@ public class VaultHook {
         }
     }
 
-    public static String formatMoney(double amount) {
+    public String formatMoney(double amount) {
         return enabled && economy != null ? economy.format(amount) : String.format("$%.2f", amount);
     }
 
-    public static String formatTransaction(double amount, boolean gained) {
+    public String formatTransaction(double amount, boolean gained) {
         String formatted = formatMoney(amount);
         return gained ? "<green>+" + formatted : "<red>-" + formatted;
-    }
-
-    public static boolean isEnabled() {
-        return enabled && economy != null;
     }
 }

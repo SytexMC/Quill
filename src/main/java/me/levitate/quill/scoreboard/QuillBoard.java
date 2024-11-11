@@ -1,7 +1,7 @@
 package me.levitate.quill.scoreboard;
 
 import me.levitate.quill.chat.Chat;
-import me.levitate.quill.hook.PlaceholderFactory;
+import me.levitate.quill.hook.hooks.PlaceholderFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;

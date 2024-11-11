@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "2.6.4"
+version = "2.7.0"
 
 repositories {
     mavenCentral()
@@ -19,16 +19,23 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
-    compileOnly("me.clip:placeholderapi:2.11.6")
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
 
+    // Plugin Hooks
+    compileOnly("com.github.decentsoftware-eu:decentholograms:2.8.12")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
+    compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("net.luckperms:api:5.4")
+
+    // Lombok
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
 
+    // JSON Storage
     implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
 
+    // Config Library (Being removed as soon as the new configuration class is stable enough)
     implementation("de.exlll:configlib-paper:4.5.0")
 
     api("dev.triumphteam:triumph-gui:3.1.10")

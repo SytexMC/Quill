@@ -1,6 +1,6 @@
 package me.levitate.quill.chat;
 
-import me.levitate.quill.hook.PlaceholderFactory;
+import me.levitate.quill.hook.hooks.PlaceholderFactory;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;

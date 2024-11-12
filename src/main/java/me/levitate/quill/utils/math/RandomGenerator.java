@@ -1,10 +1,10 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.math;
 
 import org.bukkit.Location;
 
 import java.util.*;
 
-public class RandomUtils {
+public class RandomGenerator {
     private static final Random random = new Random();
 
     /**
@@ -49,7 +49,7 @@ public class RandomUtils {
      */
     public static <T> T getWeightedRandom(Map<T, Double> weights) {
         double totalWeight = weights.values().stream().mapToDouble(Double::doubleValue).sum();
-        double random = RandomUtils.getRandomDouble(0, totalWeight);
+        double random = RandomGenerator.getRandomDouble(0, totalWeight);
         double currentWeight = 0;
 
         for (Map.Entry<T, Double> entry : weights.entrySet()) {

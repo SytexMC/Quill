@@ -11,7 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BukkitSerializers {
+public class BukkitTypeSerializers {
     /**
      * Location serializer
      */

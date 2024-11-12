@@ -1,9 +1,9 @@
 package me.levitate.quill.item;
 
-import de.exlll.configlib.Configuration;
 import lombok.Getter;
 import me.levitate.quill.chat.Chat;
-import me.levitate.quill.utils.ItemUtils;
+import me.levitate.quill.injection.annotation.Module;
+import me.levitate.quill.utils.bukkit.ItemHelper;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
@@ -21,8 +21,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Getter
-@Configuration
-public class ItemWrapper {
+@Module
+public class ItemBuilder {
     private Plugin plugin;
     private Material material;
     private String name;
@@ -37,65 +37,65 @@ public class ItemWrapper {
     private Integer customDurability;
     private Map<String, Object> persistentData;
 
-    public ItemWrapper() {
+    public ItemBuilder() {
     }
 
-    public ItemWrapper plugin(Plugin plugin) {
+    public ItemBuilder plugin(Plugin plugin) {
         this.plugin = plugin;
         return this;
     }
 
-    public ItemWrapper material(Material material) {
+    public ItemBuilder material(Material material) {
         this.material = material;
         return this;
     }
 
-    public ItemWrapper name(String name) {
+    public ItemBuilder name(String name) {
         this.name = name;
         return this;
     }
 
-    public ItemWrapper headId(String headId) {
+    public ItemBuilder headId(String headId) {
         this.headId = headId;
         return this;
     }
 
-    public ItemWrapper lore(List<String> lore) {
+    public ItemBuilder lore(List<String> lore) {
         this.lore = lore;
         return this;
     }
 
-    public ItemWrapper amount(int amount) {
+    public ItemBuilder amount(int amount) {
         this.amount = amount;
         return this;
     }
 
-    public ItemWrapper modelData(int modelData) {
+    public ItemBuilder modelData(int modelData) {
         this.modelData = modelData;
         return this;
     }
 
-    public ItemWrapper slots(List<Integer> slots) {
+    public ItemBuilder slots(List<Integer> slots) {
         this.slots = slots;
         return this;
     }
 
-    public ItemWrapper enchantments(Map<Enchantment, Integer> enchantments) {
+    public ItemBuilder enchantments(Map<Enchantment, Integer> enchantments) {
         this.enchantments = enchantments;
         return this;
     }
 
-    public ItemWrapper flags(List<ItemFlag> flags) {
+    public ItemBuilder flags(List<ItemFlag> flags) {
         this.flags = flags;
         return this;
     }
 
-    public ItemWrapper unbreakable(boolean unbreakable) {
+    public ItemBuilder unbreakable(boolean unbreakable) {
         this.unbreakable = unbreakable;
         return this;
     }
 
-    public ItemWrapper customDurability(Integer customDurability) {
+    public ItemBuilder customDurability(Integer customDurability) {
         this.customDurability = customDurability;
         return this;
     }
@@ -107,7 +107,7 @@ public class ItemWrapper {
         return new NamespacedKey(plugin, key);
     }
 
-    public ItemWrapper setString(String key, String value) {
+    public ItemBuilder setString(String key, String value) {
         if (persistentData == null) {
             persistentData = new HashMap<>();
         }
@@ -115,7 +115,7 @@ public class ItemWrapper {
         return this;
     }
 
-    public ItemWrapper setInt(String key, int value) {
+    public ItemBuilder setInt(String key, int value) {
         if (persistentData == null) {
             persistentData = new HashMap<>();
         }
@@ -123,7 +123,7 @@ public class ItemWrapper {
         return this;
     }
 
-    public ItemWrapper setDouble(String key, double value) {
+    public ItemBuilder setDouble(String key, double value) {
         if (persistentData == null) {
             persistentData = new HashMap<>();
         }
@@ -131,7 +131,7 @@ public class ItemWrapper {
         return this;
     }
 
-    public ItemWrapper setBoolean(String key, boolean value) {
+    public ItemBuilder setBoolean(String key, boolean value) {
         if (persistentData == null) {
             persistentData = new HashMap<>();
         }
@@ -170,7 +170,7 @@ public class ItemWrapper {
         ItemStack item;
 
         if (headId != null && material == Material.PLAYER_HEAD) {
-            item = ItemUtils.createCustomHead(headId);
+            item = ItemHelper.createCustomHead(headId);
         } else {
             item = new ItemStack(material);
         }

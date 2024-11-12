@@ -1,6 +1,5 @@
-package me.levitate.quill.wrapper;
+package me.levitate.quill.utils.common;
 
-import de.exlll.configlib.Configuration;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,20 +9,19 @@ import org.bukkit.Location;
 import java.util.Objects;
 
 @Getter
-@Configuration
 @AllArgsConstructor
 @NoArgsConstructor
-public class BasicLocation {
+public class SimpleLocation {
     private String world;
     private double x;
     private double y;
     private double z;
 
-    public static BasicLocation fromLocation(Location location) {
-        return new BasicLocation(location.getWorld().getName(), location.getX(), location.getY(), location.getZ());
+    public static SimpleLocation fromLocation(Location location) {
+        return new SimpleLocation(location.getWorld().getName(), location.getX(), location.getY(), location.getZ());
     }
 
-    public static Location toLocation(BasicLocation location) {
+    public static Location toLocation(SimpleLocation location) {
         return new Location(Bukkit.getWorld(location.getWorld()), location.getX(), location.getY(), location.getZ());
     }
 
@@ -31,7 +29,7 @@ public class BasicLocation {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        BasicLocation that = (BasicLocation) o;
+        SimpleLocation that = (SimpleLocation) o;
         return Double.compare(x, that.x) == 0 && Double.compare(y, that.y) == 0 && Double.compare(z, that.z) == 0 && Objects.equals(world, that.world);
     }
 

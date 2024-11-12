@@ -1,24 +1,30 @@
-package me.levitate.quill.listener;
+package me.levitate.quill.event;
 
+import me.levitate.quill.injection.annotation.Inject;
+import me.levitate.quill.injection.annotation.Module;
 import org.bukkit.event.*;
 import org.bukkit.plugin.Plugin;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class Events {
+@Module
+public class EventManager {
+    @Inject
+    private Plugin hostPlugin;
+
     /**
      * Start building an event listener
      */
-    public static <T extends Event> EventBuilder<T> listen(Plugin plugin, Class<T> eventClass) {
-        return new EventBuilder<>(plugin, eventClass);
+    public <T extends Event> EventBuilder<T> listen(Class<T> eventClass) {
+        return new EventBuilder<>(hostPlugin, eventClass);
     }
 
     /**
      * Quick register with default priority
      */
-    public static <T extends Event> void listen(Plugin plugin, Class<T> eventClass, Consumer<T> handler) {
-        new EventBuilder<>(plugin, eventClass).handle(handler);
+    public <T extends Event> void listen(Class<T> eventClass, Consumer<T> handler) {
+        new EventBuilder<>(hostPlugin, eventClass).handle(handler);
     }
 
     public static class EventBuilder<T extends Event> {
@@ -49,14 +55,14 @@ public class Events {
         }
 
         /**
-         * Set to highest priority
+         * Set to the highest priority
          */
         public EventBuilder<T> highest() {
             return priority(EventPriority.HIGHEST);
         }
 
         /**
-         * Set to lowest priority
+         * Set to the lowest priority
          */
         public EventBuilder<T> lowest() {
             return priority(EventPriority.LOWEST);
@@ -117,9 +123,9 @@ public class Events {
     /**
      * Utility method to run handler async
      */
-    public static <T extends Event> Consumer<T> async(Plugin plugin, Consumer<T> handler) {
-        return event -> plugin.getServer().getScheduler().runTaskAsynchronously(
-                plugin,
+    public Consumer<Event> async(Consumer<Event> handler) {
+        return event -> hostPlugin.getServer().getScheduler().runTaskAsynchronously(
+                hostPlugin,
                 () -> handler.accept(event)
         );
     }
@@ -127,9 +133,9 @@ public class Events {
     /**
      * Utility method to run handler on next tick
      */
-    public static <T extends Event> Consumer<T> nextTick(Plugin plugin, Consumer<T> handler) {
-        return event -> plugin.getServer().getScheduler().runTask(
-                plugin,
+    public Consumer<Event> nextTick(Consumer<Event> handler) {
+        return event -> hostPlugin.getServer().getScheduler().runTask(
+                hostPlugin,
                 () -> handler.accept(event)
         );
     }

@@ -1,8 +1,8 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.bukkit;
 
 import org.bukkit.entity.Player;
 
-public class ExperienceUtils {
+public class ExperienceHelper {
     public static int getTotalExperience(int level) {
         if (level <= 16) {
             return (int) (Math.pow(level, 2) + 6 * level);

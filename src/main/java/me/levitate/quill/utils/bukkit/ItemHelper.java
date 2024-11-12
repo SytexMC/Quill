@@ -1,16 +1,14 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.bukkit;
 
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ItemUtils {
+public class ItemHelper {
     @SuppressWarnings("deprecation")
     public static ItemStack createCustomHead(String base64Value) {
         Objects.requireNonNull(base64Value, "Base64 value cannot be null");
@@ -79,30 +77,6 @@ public class ItemUtils {
             }
         }
         return false;
-    }
-
-    public static ItemStack createItem(Material material, String name, List<String> lore) {
-        Objects.requireNonNull(material, "Material cannot be null");
-
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-            if (name != null) {
-                meta.displayName(Component.text(name));
-            }
-
-            if (lore != null && !lore.isEmpty()) {
-                meta.lore(lore.stream()
-                        .filter(Objects::nonNull)
-                        .map(Component::text)
-                        .collect(Collectors.toList()));
-            }
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
     }
 
     public static String formatMaterialName(Material material) {

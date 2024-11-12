@@ -1,4 +1,4 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.bukkit;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 
 import java.util.Collection;
 
-public class SoundUtils {
+public class SoundHelper {
     public static void playSound(Player player, Sound sound, float volume, float pitch) {
         player.playSound(player.getLocation(), sound, volume, pitch);
     }

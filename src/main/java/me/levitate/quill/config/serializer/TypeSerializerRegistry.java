@@ -14,10 +14,10 @@ public class TypeSerializerRegistry {
 
     static {
         // Register default Bukkit serializers
-        register(Location.class, new BukkitSerializers.LocationSerializer());
-        register(ItemStack.class, new BukkitSerializers.ItemStackSerializer());
-        register(Sound.class, new BukkitSerializers.SoundSerializer());
-        register(Material.class, new BukkitSerializers.MaterialSerializer());
+        register(Location.class, new BukkitTypeSerializers.LocationSerializer());
+        register(ItemStack.class, new BukkitTypeSerializers.ItemStackSerializer());
+        register(Sound.class, new BukkitTypeSerializers.SoundSerializer());
+        register(Material.class, new BukkitTypeSerializers.MaterialSerializer());
     }
 
     /**

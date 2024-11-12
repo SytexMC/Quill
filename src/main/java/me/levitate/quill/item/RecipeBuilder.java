@@ -1,5 +1,6 @@
 package me.levitate.quill.item;
 
+import me.levitate.quill.injection.annotation.Module;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.*;
@@ -8,6 +9,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Module
 public class RecipeBuilder {
     private final Plugin plugin;
     private final ItemStack result;

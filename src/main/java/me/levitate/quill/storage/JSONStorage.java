@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.Getter;
-import me.levitate.quill.serializers.JSONSerializers;
+import me.levitate.quill.storage.serializers.JSONSerializers;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;

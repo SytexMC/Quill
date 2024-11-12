@@ -1,4 +1,4 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.math;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -7,7 +7,7 @@ import java.util.OptionalDouble;
 import java.util.Random;
 import java.util.regex.Pattern;
 
-public class MathUtils {
+public class MathHelper {
     private static final Random RANDOM = new Random();
     private static final Pattern EVAL_PATTERN = Pattern.compile("[0-9+\\-*/().\\s]+");
 

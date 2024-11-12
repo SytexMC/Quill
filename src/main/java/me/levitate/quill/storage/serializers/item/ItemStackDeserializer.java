@@ -1,4 +1,4 @@
-package me.levitate.quill.serializers.item;
+package me.levitate.quill.storage.serializers.item;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;

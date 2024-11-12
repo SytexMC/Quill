@@ -1,4 +1,4 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.common;
 
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-public class TimeUtils {
+public class TimeFormatter {
     public static final int SECONDS_PER_DAY = 86400;
     public static final int SECONDS_PER_HOUR = 3600;
     public static final int SECONDS_PER_MINUTE = 60;

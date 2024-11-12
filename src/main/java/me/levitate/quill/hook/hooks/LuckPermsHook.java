@@ -1,5 +1,6 @@
 package me.levitate.quill.hook.hooks;
 
+import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.hook.PluginHook;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;

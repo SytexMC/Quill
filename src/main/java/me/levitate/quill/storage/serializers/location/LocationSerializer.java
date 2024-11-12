@@ -1,4 +1,4 @@
-package me.levitate.quill.serializers.location;
+package me.levitate.quill.storage.serializers.location;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.*;

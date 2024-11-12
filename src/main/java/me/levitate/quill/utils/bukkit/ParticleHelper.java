@@ -1,10 +1,10 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.bukkit;
 
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.util.Vector;
 
-public class ParticleUtils {
+public class ParticleHelper {
     public static void spawnParticle(Location location, Particle particle, int count, double offsetX, double offsetY, double offsetZ) {
         location.getWorld().spawnParticle(particle, location, count, offsetX, offsetY, offsetZ);
     }

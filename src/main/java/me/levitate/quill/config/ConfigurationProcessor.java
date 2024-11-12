@@ -6,6 +6,8 @@ import me.levitate.quill.config.annotation.Configuration;
 import me.levitate.quill.config.annotation.Path;
 import me.levitate.quill.config.serializer.TypeSerializer;
 import me.levitate.quill.config.serializer.TypeSerializerRegistry;
+import me.levitate.quill.injection.annotation.Inject;
+import me.levitate.quill.injection.annotation.Module;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -17,14 +19,13 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.logging.Level;
 
+@Module
 public class ConfigurationProcessor {
-    private static final Gson GSON = new Gson();
-    private final Plugin plugin;
-    private final Map<Class<?>, Object> loadedConfigs = new HashMap<>();
+    @Inject
+    private Plugin hostPlugin;
 
-    public ConfigurationProcessor(Plugin plugin) {
-        this.plugin = plugin;
-    }
+    private static final Gson GSON = new Gson();
+    private final Map<Class<?>, Object> loadedConfigs = new HashMap<>();
 
     /**
      * Load a configuration class
@@ -50,7 +51,7 @@ public class ConfigurationProcessor {
             T instance = configClass.getDeclaredConstructor().newInstance();
 
             // Load configuration
-            File configFile = new File(plugin.getDataFolder(), config.value());
+            File configFile = new File(hostPlugin.getDataFolder(), config.value());
             loadConfiguration(instance, configFile, config.autoUpdate());
 
             // Store in loaded configs
@@ -58,7 +59,7 @@ public class ConfigurationProcessor {
 
             return instance;
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load configuration: " + configClass.getSimpleName(), e);
+            hostPlugin.getLogger().log(Level.SEVERE, "Failed to load configuration: " + configClass.getSimpleName(), e);
             return null;
         }
     }
@@ -72,10 +73,10 @@ public class ConfigurationProcessor {
             Configuration annotation = config.getClass().getAnnotation(Configuration.class);
             if (annotation == null) return;
 
-            File configFile = new File(plugin.getDataFolder(), annotation.value());
+            File configFile = new File(hostPlugin.getDataFolder(), annotation.value());
             saveConfiguration(config, configFile);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save configuration: " + config.getClass().getSimpleName(), e);
+            hostPlugin.getLogger().log(Level.SEVERE, "Failed to save configuration: " + config.getClass().getSimpleName(), e);
         }
     }
 

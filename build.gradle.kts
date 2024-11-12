@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "2.7.0"
+version = "3.0.0"
 
 repositories {
     mavenCentral()
@@ -34,9 +34,6 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
-
-    // Config Library (Being removed as soon as the new configuration class is stable enough)
-    implementation("de.exlll:configlib-paper:4.5.0")
 
     api("dev.triumphteam:triumph-gui:3.1.10")
     api("co.aikar:acf-paper:0.5.1-SNAPSHOT")

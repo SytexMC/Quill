@@ -2,6 +2,7 @@ package me.levitate.quill.hook.hooks;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.hook.PluginHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

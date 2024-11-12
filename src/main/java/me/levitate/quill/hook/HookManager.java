@@ -1,5 +1,8 @@
 package me.levitate.quill.hook;
 
+import me.levitate.quill.injection.annotation.Inject;
+import me.levitate.quill.injection.annotation.Module;
+import me.levitate.quill.injection.annotation.PostConstruct;
 import me.levitate.quill.hook.hooks.*;
 import org.bukkit.plugin.Plugin;
 import java.util.HashMap;
@@ -9,13 +12,15 @@ import java.util.Optional;
 /**
  * Manages all plugin hooks and their initialization
  */
+@Module
 public class HookManager {
-    private final Plugin plugin;
-    private final Map<String, PluginHook> hooks;
+    @Inject
+    private Plugin plugin;
 
-    public HookManager(Plugin plugin) {
-        this.plugin = plugin;
-        this.hooks = new HashMap<>();
+    private final Map<String, PluginHook> hooks = new HashMap<>();
+
+    @PostConstruct
+    public void init() {
         registerHooks();
     }
 

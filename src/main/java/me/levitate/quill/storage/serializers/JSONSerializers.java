@@ -1,13 +1,13 @@
-package me.levitate.quill.serializers;
+package me.levitate.quill.storage.serializers;
 
-import me.levitate.quill.serializers.item.ItemStackDeserializer;
-import me.levitate.quill.serializers.item.ItemStackSerializer;
-import me.levitate.quill.serializers.location.BasicLocationDeserializer;
-import me.levitate.quill.serializers.location.BasicLocationSerializer;
-import me.levitate.quill.serializers.location.LocationDeserializer;
-import me.levitate.quill.serializers.location.LocationSerializer;
+import me.levitate.quill.storage.serializers.item.ItemStackDeserializer;
+import me.levitate.quill.storage.serializers.item.ItemStackSerializer;
+import me.levitate.quill.storage.serializers.location.BasicLocationDeserializer;
+import me.levitate.quill.storage.serializers.location.BasicLocationSerializer;
+import me.levitate.quill.storage.serializers.location.LocationDeserializer;
+import me.levitate.quill.storage.serializers.location.LocationSerializer;
 import me.levitate.quill.storage.JSONStorage;
-import me.levitate.quill.wrapper.BasicLocation;
+import me.levitate.quill.utils.common.SimpleLocation;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -25,7 +25,7 @@ public class JSONSerializers {
         
         // Register location serializers
         storage.addConverter(Location.class, new LocationSerializer(), new LocationDeserializer());
-        storage.addConverter(BasicLocation.class, new BasicLocationSerializer(), new BasicLocationDeserializer());
+        storage.addConverter(SimpleLocation.class, new BasicLocationSerializer(), new BasicLocationDeserializer());
         
         // Register item serializers
         storage.addConverter(ItemStack.class, new ItemStackSerializer(), new ItemStackDeserializer());

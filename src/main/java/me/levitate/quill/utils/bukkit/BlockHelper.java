@@ -1,4 +1,4 @@
-package me.levitate.quill.utils;
+package me.levitate.quill.utils.bukkit;
 
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -8,7 +8,7 @@ import org.bukkit.util.Vector;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BlockUtils {
+public class BlockHelper {
     /**
      * Get all blocks within a radius
      */

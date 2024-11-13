@@ -1,6 +1,9 @@
 package me.levitate.quill.config;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import me.levitate.quill.config.annotation.Comment;
 import me.levitate.quill.config.annotation.Configuration;
 import me.levitate.quill.config.annotation.Path;
@@ -24,7 +27,21 @@ public class ConfigurationProcessor {
     @Inject
     private Plugin hostPlugin;
 
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder()
+            .setExclusionStrategies(new ExclusionStrategy() {
+                @Override
+                public boolean shouldSkipField(FieldAttributes f) {
+                    // Skip fields from java.util.TimeZone and similar system classes
+                    return f.getDeclaringClass().getName().startsWith("java.util");
+                }
+
+                @Override
+                public boolean shouldSkipClass(Class<?> clazz) {
+                    return false;
+                }
+            })
+            .create();
+
     private final Map<Class<?>, Object> loadedConfigs = new HashMap<>();
 
     /**

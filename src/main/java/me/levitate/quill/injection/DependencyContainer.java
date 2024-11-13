@@ -191,7 +191,7 @@ public class DependencyContainer {
             return dependency;
         }
 
-        // If not found and it's a module, try to register it
+        // If not found, and it's a module, try to register it
         if (dependencyType.isAnnotationPresent(Module.class)) {
             registerModule(dependencyType);
             return modules.get(dependencyType);

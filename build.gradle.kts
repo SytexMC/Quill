@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "3.0.0"
+version = "3.0.1"
 
 repositories {
     mavenCentral()
@@ -21,7 +21,6 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
 
     // Plugin Hooks
-    compileOnly("com.github.decentsoftware-eu:decentholograms:2.8.12")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("net.luckperms:api:5.4")

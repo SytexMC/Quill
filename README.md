@@ -32,7 +32,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("com.github.xLevitate:Quill:2.6.0")
+    compileOnly("com.github.xLevitate:Quill:VERSION")
 }
 ```
 
@@ -43,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'com.github.xLevitate:Quill:2.6.0'
+    compileOnly 'com.github.xLevitate:Quill:VERSION'
 }
 ```
 

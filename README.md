@@ -60,7 +60,7 @@ dependencies {
     <dependency>
         <groupId>com.github.xLevitate</groupId>
         <artifactId>Quill</artifactId>
-        <version>2.6.0</version>
+        <version>VERSION</version>
         <scope>provided</scope>
     </dependency>
 </dependencies>

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import lombok.Getter;
 import me.levitate.quill.config.annotation.Comment;
 import me.levitate.quill.config.annotation.Configuration;
 import me.levitate.quill.config.annotation.Path;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -37,18 +39,18 @@ public class ConfigManager {
     private final Plugin plugin;
     private final ObjectMapper mapper;
     private final Map<Class<?>, Object> configCache;
+    private final Map<Class<?>, List<ReloadListener<?>>> reloadListeners;
 
     public ConfigManager(Plugin plugin) {
         this.plugin = plugin;
         this.configCache = new ConcurrentHashMap<>();
+        this.reloadListeners = new ConcurrentHashMap<>();
 
-        // Configure YAMLFactory with desired settings
         YAMLFactory yamlFactory = YAMLFactory.builder()
                 .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
                 .enable(YAMLGenerator.Feature.LITERAL_BLOCK_STYLE)
                 .build();
 
-        // Configure ObjectMapper
         this.mapper = new ObjectMapper(yamlFactory)
                 .enable(SerializationFeature.INDENT_OUTPUT)
                 .setSerializationInclusion(JsonInclude.Include.NON_NULL)
@@ -61,9 +63,6 @@ public class ConfigManager {
         registerBukkitSerializers();
     }
 
-    /**
-     * Serialize an ItemStack to Base64
-     */
     public static String serializeItemStack(ItemStack item) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -76,9 +75,6 @@ public class ConfigManager {
         }
     }
 
-    /**
-     * Deserialize an ItemStack from Base64
-     */
     public static ItemStack deserializeItemStack(String data) {
         try {
             ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
@@ -91,9 +87,6 @@ public class ConfigManager {
         }
     }
 
-    /**
-     * Convert a Location to a Map
-     */
     public static Map<String, Object> serializeLocation(Location location) {
         Map<String, Object> map = new HashMap<>();
         map.put("world", location.getWorld().getName());
@@ -105,9 +98,6 @@ public class ConfigManager {
         return map;
     }
 
-    /**
-     * Convert a Map to a Location
-     */
     public static Location deserializeLocation(Map<String, Object> map) {
         return new Location(
                 Bukkit.getWorld((String) map.get("world")),
@@ -120,21 +110,35 @@ public class ConfigManager {
     }
 
     private void registerBukkitSerializers() {
-        // Custom serializer for ItemStack
         mapper.addMixIn(ItemStack.class, ItemStackMixin.class);
-
-        // Custom serializer for Location
         mapper.addMixIn(Location.class, LocationMixin.class);
-
-        // Register other Bukkit-specific serializers as needed
     }
 
-    /**
-     * Load a configuration class
-     * @param configClass The class to load
-     * @param <T> The configuration type
-     * @return The loaded configuration instance
-     */
+    public <T> void addReloadListener(Class<T> configClass, Consumer<T> listener) {
+        reloadListeners.computeIfAbsent(configClass, k -> new ArrayList<>())
+                .add(new ReloadListener<>(configClass, listener));
+    }
+
+    public <T> void removeReloadListener(Class<T> configClass, Consumer<T> listener) {
+        List<ReloadListener<?>> listeners = reloadListeners.get(configClass);
+        if (listeners != null) {
+            listeners.removeIf(l -> l.listener() == listener);
+        }
+    }
+
+    public void clearReloadListeners(Class<?> configClass) {
+        reloadListeners.remove(configClass);
+    }
+
+    public void clearAllReloadListeners() {
+        reloadListeners.clear();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T get(Class<T> configClass) {
+        return (T) configCache.get(configClass);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T load(Class<T> configClass) {
         try {
@@ -143,7 +147,6 @@ public class ConfigManager {
                 throw new IllegalArgumentException("Class must be annotated with @Configuration");
             }
 
-            // Check cache first
             T cached = (T) configCache.get(configClass);
             if (cached != null) {
                 return cached;
@@ -167,21 +170,17 @@ public class ConfigManager {
         T instance;
 
         if (!file.exists()) {
-            // Create new instance with default values
             instance = configClass.getDeclaredConstructor().newInstance();
             save(instance);
             return instance;
         }
 
-        // Load the YAML with comments preserved
         Map<String, String[]> comments = new HashMap<>();
         List<String> fileContent = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
         collectComments(fileContent, comments);
 
-        // Deserialize configuration
         instance = mapper.readValue(file, configClass);
 
-        // Update if needed
         if (autoUpdate) {
             T defaultInstance = configClass.getDeclaredConstructor().newInstance();
             updateConfiguration(instance, defaultInstance);
@@ -204,10 +203,6 @@ public class ConfigManager {
         }
     }
 
-    /**
-     * Save a configuration instance
-     * @param config The configuration instance to save
-     */
     public void save(Object config) {
         try {
             Configuration annotation = config.getClass().getAnnotation(Configuration.class);
@@ -218,33 +213,39 @@ public class ConfigManager {
                 configFile.getParentFile().mkdirs();
             }
 
-            // Get comments before saving
             Map<String, String[]> comments = getConfigComments(config.getClass());
 
-            // Convert to YAML string
             String yamlContent = mapper.writeValueAsString(config);
 
-            // Add comments to YAML content
             List<String> lines = new ArrayList<>(Arrays.asList(yamlContent.split("\n")));
             insertComments(lines, comments);
 
-            // Write the final content
-            Files.write(configFile.toPath(), String.join("\n", lines).getBytes(StandardCharsets.UTF_8));
+            Files.writeString(configFile.toPath(), String.join("\n", lines));
 
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save configuration: " + config.getClass().getSimpleName(), e);
         }
     }
 
-    /**
-     * Reload a configuration class
-     * @param configClass The class to reload
-     * @param <T> The configuration type
-     * @return The reloaded configuration instance
-     */
+    public void reloadAll() {
+        for (Class<?> configClass : new HashSet<>(configCache.keySet())) {
+            reload(configClass);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     public <T> T reload(Class<T> configClass) {
         configCache.remove(configClass);
-        return load(configClass);
+        T config = load(configClass);
+
+        List<ReloadListener<?>> listeners = reloadListeners.get(configClass);
+        if (listeners != null) {
+            for (ReloadListener<?> listener : listeners) {
+                ((ReloadListener<T>) listener).onReload(config);
+            }
+        }
+
+        return config;
     }
 
     private Map<String, String[]> getConfigComments(Class<?> configClass) {
@@ -339,5 +340,11 @@ public class ConfigManager {
 
         @JsonProperty
         abstract float getPitch();
+    }
+
+    private record ReloadListener<T>(Class<T> configClass, @Getter Consumer<T> listener) {
+        public void onReload(T config) {
+            listener.accept(config);
+        }
     }
 }

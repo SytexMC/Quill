@@ -27,20 +27,7 @@ public class ConfigurationProcessor {
     @Inject
     private Plugin hostPlugin;
 
-    private static final Gson GSON = new GsonBuilder()
-            .setExclusionStrategies(new ExclusionStrategy() {
-                @Override
-                public boolean shouldSkipField(FieldAttributes f) {
-                    // Skip fields from java.util.TimeZone and similar system classes
-                    return f.getDeclaringClass().getName().startsWith("java.util");
-                }
-
-                @Override
-                public boolean shouldSkipClass(Class<?> clazz) {
-                    return false;
-                }
-            })
-            .create();
+    private static final Gson GSON = GsonConfig.createConfiguredGson();
 
     private final Map<Class<?>, Object> loadedConfigs = new HashMap<>();
 

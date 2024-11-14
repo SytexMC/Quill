@@ -18,6 +18,9 @@ public class TypeSerializerRegistry {
         register(ItemStack.class, new BukkitTypeSerializers.ItemStackSerializer());
         register(Sound.class, new BukkitTypeSerializers.SoundSerializer());
         register(Material.class, new BukkitTypeSerializers.MaterialSerializer());
+
+        // Register class serializers
+        register(Class.class, new ClassSerializer());
     }
 
     /**

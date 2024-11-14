@@ -2,7 +2,6 @@ package me.levitate.quill.injection;
 
 import lombok.Getter;
 import me.levitate.quill.config.ConfigManager;
-import me.levitate.quill.config.ConfigurationProcessor;
 import me.levitate.quill.event.EventManager;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
@@ -41,7 +40,6 @@ public class DependencyContainer {
     private void registerCoreModules() {
         try {
             // Register core modules in dependency order
-            registerModule(ConfigurationProcessor.class);
             registerModule(ConfigManager.class);
             registerModule(EventManager.class);
             registerModule(HookManager.class);

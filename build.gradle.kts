@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "3.0.3"
+version = "3.1.0"
 
 repositories {
     mavenCentral()
@@ -33,6 +33,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
 
     api("dev.triumphteam:triumph-gui:3.1.10")
     api("co.aikar:acf-paper:0.5.1-SNAPSHOT")

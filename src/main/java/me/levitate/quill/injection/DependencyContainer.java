@@ -9,6 +9,7 @@ import me.levitate.quill.injection.annotation.PostConstruct;
 import me.levitate.quill.injection.annotation.PreDestroy;
 import me.levitate.quill.hook.HookManager;
 import me.levitate.quill.injection.exception.DependencyException;
+import me.levitate.quill.manager.CommandManager;
 import me.levitate.quill.utils.common.TaskScheduler;
 import org.bukkit.plugin.Plugin;
 
@@ -41,9 +42,10 @@ public class DependencyContainer {
         try {
             // Register core modules in dependency order
             registerModule(ConfigManager.class);
-            registerModule(EventManager.class);
             registerModule(HookManager.class);
             registerModule(TaskScheduler.class);
+            registerModule(EventManager.class);
+            registerModule(CommandManager.class);
         } catch (DependencyException e) {
             logger.severe("Failed to register core modules: " + e.getMessage());
             logger.severe("Stack trace for debugging:");

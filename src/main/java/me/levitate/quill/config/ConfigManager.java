@@ -63,18 +63,6 @@ public class ConfigManager {
         registerBukkitSerializers();
     }
 
-    public static String serializeItemStack(ItemStack item) {
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
-            dataOutput.writeObject(item);
-            dataOutput.close();
-            return Base64Coder.encodeLines(outputStream.toByteArray());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize ItemStack", e);
-        }
-    }
-
     public static ItemStack deserializeItemStack(String data) {
         try {
             ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
@@ -85,28 +73,6 @@ public class ConfigManager {
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize ItemStack", e);
         }
-    }
-
-    public static Map<String, Object> serializeLocation(Location location) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("world", location.getWorld().getName());
-        map.put("x", location.getX());
-        map.put("y", location.getY());
-        map.put("z", location.getZ());
-        map.put("yaw", location.getYaw());
-        map.put("pitch", location.getPitch());
-        return map;
-    }
-
-    public static Location deserializeLocation(Map<String, Object> map) {
-        return new Location(
-                Bukkit.getWorld((String) map.get("world")),
-                ((Number) map.get("x")).doubleValue(),
-                ((Number) map.get("y")).doubleValue(),
-                ((Number) map.get("z")).doubleValue(),
-                ((Number) map.get("yaw")).floatValue(),
-                ((Number) map.get("pitch")).floatValue()
-        );
     }
 
     private void registerBukkitSerializers() {

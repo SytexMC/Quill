@@ -2,23 +2,23 @@ package me.levitate.quill.hook.hooks;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.hook.PluginHook;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 import java.util.function.Function;
 
 public class PlaceholderFactory implements PluginHook {
     private static PlaceholderFactory instance;
     private boolean enabled = false;
+    private final Map<String, DynamicExpansion> registeredExpansions = new HashMap<>();
 
-    public PlaceholderFactory() {}
+    public PlaceholderFactory() {
+        instance = this;
+    }
 
     public static PlaceholderFactory getInstance() {
         if (instance == null) {
@@ -31,7 +31,6 @@ public class PlaceholderFactory implements PluginHook {
     public boolean init() {
         if (Bukkit.getPluginManager().getPlugin(getPluginName()) != null) {
             enabled = true;
-            instance = this;
             return true;
         }
         return false;
@@ -47,11 +46,64 @@ public class PlaceholderFactory implements PluginHook {
         return "PlaceholderAPI";
     }
 
+    /**
+     * Sets placeholders in a text for a player
+     * @param player The player to set placeholders for
+     * @param text The text containing placeholders
+     * @return The text with placeholders replaced
+     */
+    public static String setPlaceholders(Player player, String text) {
+        return PlaceholderAPI.setPlaceholders(player, text);
+    }
+
+    /**
+     * Sets relational placeholders in a text between two players
+     * @param one The first player
+     * @param two The second player
+     * @param text The text containing placeholders
+     * @return The text with relational placeholders replaced
+     */
+    public String setRelationalPlaceholders(Player one, Player two, String text) {
+        if (!enabled || text == null) return text;
+        return PlaceholderAPI.setRelationalPlaceholders(one, two, text);
+    }
+
+    /**
+     * Creates a new expansion builder for the specified plugin
+     * @param plugin The plugin instance
+     * @param identifier The identifier for the expansion
+     * @return A builder to create the expansion
+     */
+    public PlaceholderBuilder createExpansion(Plugin plugin, String identifier) {
+        if (!enabled) return null;
+        return new PlaceholderBuilder(this, plugin, identifier);
+    }
+
+    /**
+     * Creates a new expansion builder with custom details
+     * @param identifier The identifier for the expansion
+     * @param author The author name
+     * @param version The version string
+     * @return A builder to create the expansion
+     */
+    public PlaceholderBuilder createExpansion(String identifier, String author, String version) {
+        if (!enabled) return null;
+        return new PlaceholderBuilder(this, identifier, author, version);
+    }
+
+    /**
+     * Unregisters all expansions created by this hook
+     */
+    public void unregisterAll() {
+        registeredExpansions.values().forEach(PlaceholderExpansion::unregister);
+        registeredExpansions.clear();
+    }
+
     private static class DynamicExpansion extends PlaceholderExpansion {
         private final String identifier;
         private final String author;
         private final String version;
-        private final Map<String, Function<Player, String>> placeholders = new ConcurrentHashMap<>();
+        private final Map<String, Function<Player, String>> placeholders = new HashMap<>();
 
         public DynamicExpansion(String identifier, String author, String version) {
             this.identifier = identifier.toLowerCase();
@@ -75,7 +127,7 @@ public class PlaceholderFactory implements PluginHook {
         }
 
         @Override
-        public String onPlaceholderRequest(Player player, @NotNull String params) {
+        public String onPlaceholderRequest(Player player, String params) {
             if (player == null) return "";
 
             Function<Player, String> resolver = placeholders.get(params.toLowerCase());
@@ -95,60 +147,22 @@ public class PlaceholderFactory implements PluginHook {
         }
     }
 
-    /**
-     * Creates a new PlaceholderAPI expansion for your plugin.
-     *
-     * @param plugin The plugin instance
-     * @param identifier The identifier for your placeholders
-     * @return A builder to register placeholders
-     */
-    public static PlaceholderBuilder create(Plugin plugin, String identifier) {
-        if (instance == null || !instance.enabled) return null;
-
-        final String author = plugin.getDescription().getAuthors().get(0);
-        return create(identifier, author != null ? author : "Quill", plugin.getDescription().getVersion());
-    }
-
-    /**
-     * Creates a new PlaceholderAPI expansion with custom details.
-     *
-     * @param identifier The identifier for your placeholders
-     * @param author The author of the expansion
-     * @param version The version of the expansion
-     * @return A builder to register placeholders
-     */
-    public static PlaceholderBuilder create(String identifier, String author, String version) {
-        if (instance == null || !instance.enabled) return null;
-        return new PlaceholderBuilder(identifier, author, version);
-    }
-
-    /**
-     * Sets placeholders in a text for a player.
-     * @param player The player to set placeholders for
-     * @param text The text containing placeholders
-     * @return The text with placeholders replaced
-     */
-    public static String setPlaceholders(Player player, String text) {
-        if (instance == null || !instance.enabled || text == null) return text;
-        return PlaceholderAPI.setPlaceholders(player, text);
-    }
-
-    /**
-     * Sets relational placeholders in a text between two players.
-     * @param one The first player
-     * @param two The second player
-     * @param text The text containing placeholders
-     * @return The text with relational placeholders replaced
-     */
-    public static String setRelationalPlaceholders(Player one, Player two, String text) {
-        if (instance == null || !instance.enabled || text == null) return text;
-        return PlaceholderAPI.setRelationalPlaceholders(one, two, text);
-    }
-
     public static class PlaceholderBuilder {
+        private final PlaceholderFactory hook;
         private final DynamicExpansion expansion;
 
-        private PlaceholderBuilder(String identifier, String author, String version) {
+        private PlaceholderBuilder(PlaceholderFactory hook, Plugin plugin, String identifier) {
+            this.hook = hook;
+            String author = plugin.getDescription().getAuthors().get(0);
+            this.expansion = new DynamicExpansion(
+                    identifier,
+                    author != null ? author : "Unknown",
+                    plugin.getDescription().getVersion()
+            );
+        }
+
+        private PlaceholderBuilder(PlaceholderFactory hook, String identifier, String author, String version) {
+            this.hook = hook;
             this.expansion = new DynamicExpansion(identifier, author, version);
         }
 
@@ -188,7 +202,11 @@ public class PlaceholderFactory implements PluginHook {
          * @return true if registration was successful
          */
         public boolean register() {
-            return expansion.register();
+            if (expansion.register()) {
+                hook.registeredExpansions.put(expansion.getIdentifier(), expansion);
+                return true;
+            }
+            return false;
         }
     }
 }

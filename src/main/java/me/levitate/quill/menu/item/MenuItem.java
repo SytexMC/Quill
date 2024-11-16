@@ -1,4 +1,4 @@
-package me.levitate.quill.menu;
+package me.levitate.quill.menu.item;
 
 import lombok.Getter;
 import lombok.Setter;

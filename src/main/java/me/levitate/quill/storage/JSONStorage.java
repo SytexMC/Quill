@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+@Deprecated()
 public class JSONStorage<K, V> {
     @Getter
     private final Map<K, V> storage;

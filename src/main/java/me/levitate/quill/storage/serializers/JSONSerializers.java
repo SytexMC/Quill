@@ -16,6 +16,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.UUID;
 
+@Deprecated
 public class JSONSerializers {
     public static void registerDefaults(JSONStorage<?, ?> storage) {
         // Register basic type converters

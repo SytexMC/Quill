@@ -2,6 +2,8 @@ package me.levitate.quill.menu;
 
 import lombok.Getter;
 import me.levitate.quill.chat.Chat;
+import me.levitate.quill.menu.filler.MenuFiller;
+import me.levitate.quill.menu.item.MenuItem;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -11,13 +13,11 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 import java.util.function.Consumer;
 
 public abstract class QuillMenu {
-    protected final Plugin plugin;
     protected final Map<Integer, MenuItem> items;
     protected final Map<Integer, List<MenuItem>> pages;
     protected final List<Consumer<InventoryClickEvent>> globalClickHandlers;
@@ -36,44 +36,32 @@ public abstract class QuillMenu {
     @Getter protected ItemStack pageFiller;
     @Getter protected int[] pageSlots;
 
-    protected QuillMenu(Plugin plugin, String title, int rows) {
-        this.plugin = plugin;
-        this.title = title;
-        this.size = rows * 9;
+    protected QuillMenu() {
         this.items = new HashMap<>();
         this.pages = new HashMap<>();
         this.globalClickHandlers = new ArrayList<>();
         this.closeHandlers = new ArrayList<>();
         this.openHandlers = new ArrayList<>();
         this.dragHandlers = new ArrayList<>();
-        this.pageSlots = generateDefaultPageSlots();
-        
-        onCreate();
     }
 
-    /**
-     * Called when the menu is created. Override this to add items and set up the menu.
-     */
+    protected void setMenu(String title, int rows) {
+        this.title = title;
+        this.size = rows * 9;
+        this.pageSlots = generateDefaultPageSlots();
+    }
+
     protected abstract void onCreate();
 
-    /**
-     * Called when the menu is opened. Override this for any initialization logic.
-     */
     protected void onOpen(Player player) {}
 
-    /**
-     * Called when the menu is closed. Override this for cleanup logic.
-     */
     protected void onClose(Player player) {}
 
-    /**
-     * Called before processing a click event. Return false to cancel processing.
-     */
     protected boolean onClick(Player player, InventoryClickEvent event) {
         return true;
     }
 
-    protected void addItem(MenuItem item) {
+    public void addItem(MenuItem item) {
         if (item.isPaginatable()) {
             addPaginatedItem(item);
         } else {
@@ -125,10 +113,10 @@ public abstract class QuillMenu {
 
         Map<Integer, List<MenuItem>> oldPages = new HashMap<>(pages);
         pages.clear();
-        
+
         oldPages.values().stream()
-            .flatMap(List::stream)
-            .forEach(this::addPaginatedItem);
+                .flatMap(List::stream)
+                .forEach(this::addPaginatedItem);
     }
 
     private int[] generateDefaultPageSlots() {
@@ -142,9 +130,12 @@ public abstract class QuillMenu {
     }
 
     public void open(Player player) {
+        if (title == null || size == 0) {
+            throw new IllegalStateException("Menu not properly initialized. Call setMenu() in onCreate()");
+        }
+
         Inventory inventory = Bukkit.createInventory(null, size, Chat.translate(title));
         updateInventory(inventory, currentPage);
-
         player.openInventory(inventory);
         onOpen(player);
     }
@@ -234,5 +225,38 @@ public abstract class QuillMenu {
         if (cancelAllClicks) {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * Creates a new filler instance for this menu
+     * @return A new MenuFiller instance
+     */
+    protected MenuFiller filler() {
+        return new MenuFiller(this);
+    }
+
+    /**
+     * Quick fill method for simple fills
+     * @param item The item to fill with
+     */
+    protected void fill(ItemStack item) {
+        filler().item(item).fill();
+    }
+
+    /**
+     * Quick border method for simple borders
+     * @param item The item to create border with
+     */
+    protected void fillBorder(ItemStack item) {
+        filler().item(item).fillBorder();
+    }
+
+    /**
+     * Check if a slot has an item
+     * @param slot The slot to check
+     * @return true if the slot has an item
+     */
+    public boolean hasItem(int slot) {
+        return items.containsKey(slot);
     }
 }

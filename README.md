@@ -7,12 +7,12 @@ Quill is a comprehensive utility library for Paper plugins, providing a wide ran
 
 - 🔧 **Configuration System** - Annotation-based configuration with automatic updating
 - 💬 **Chat System** - Advanced message handling with MiniMessage support
-- 💾 **JSON Storage** - Flexible and type-safe data storage system
+- 💾 **Data Storage** - Flexible and type-safe data storage system using JSON or MongoDB
 - 📦 **Item Management** - Powerful item creation and manipulation
 - 📋 **Scoreboard System** - Simple yet flexible scoreboard creation
 - 🎮 **Events System** - Streamlined event handling with filtering
 - 🛠️ **Utility Classes** - Comprehensive collection of utility methods
-- 🔌 **Plugin Hooks** - Built-in integration with PlaceholderAPI and Vault
+- 🔌 **Plugin Hooks** - Built-in integration with PlaceholderAPI, Vault and LuckPerms
 
 ## Installation
 

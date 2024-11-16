@@ -66,52 +66,6 @@ dependencies {
 </dependencies>
 ```
 
-## Quick Start
-
-### Chat System
-```java
-// Send formatted message
-Chat.sendMessage(player, "<gradient:green:blue>Welcome to the server!</gradient>");
-
-// Send title
-Chat.sendTitle(player, "<gold>Welcome!", "<gray>Enjoy your stay");
-```
-
-### Configuration
-```java
-@Configuration("config.yml")
-public class MyConfig {
-    @Comment("Enable or disable the plugin")
-    private boolean enabled = true;
-
-    @Comment("Custom message")
-    private String message = "<green>Hello!</green>";
-}
-```
-
-### Item Creation
-```java
-ItemStack item = new ItemWrapper()
-    .plugin(plugin)
-    .material(Material.DIAMOND_SWORD)
-    .name("<gradient:blue:purple>Mystic Blade</gradient>")
-    .lore(Arrays.asList(
-        "<gray>A legendary weapon",
-        "<blue>Damage: +50</blue>"
-    ))
-    .build();
-```
-
-### Event Handling
-```java
-Events.listen(plugin, PlayerJoinEvent.class)
-    .filter(event -> !event.getPlayer().hasPlayedBefore())
-    .handle(event -> {
-        Player player = event.getPlayer();
-        Chat.sendMessage(player, "<green>Welcome to the server!");
-    });
-```
-
 ## Documentation
 
 For detailed documentation, please visit our [Wiki](https://github.com/xLevitate/Quill/wiki).

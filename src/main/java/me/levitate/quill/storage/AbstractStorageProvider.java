@@ -6,13 +6,14 @@ import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 
 public abstract class AbstractStorageProvider<K, V> implements StorageProvider<K, V> {
     protected final Plugin plugin;
     protected final Map<K, V> cache;
     protected final Class<K> keyClass;
     protected final Class<V> valueClass;
-    protected boolean connected;
+    protected volatile boolean connected;
 
     @Getter
     protected final SerializationProvider serializationProvider;
@@ -64,9 +65,18 @@ public abstract class AbstractStorageProvider<K, V> implements StorageProvider<K
         return Collections.unmodifiableSet(cache.entrySet());
     }
 
+    @Override
+    public boolean isConnected() {
+        return connected;
+    }
+
     protected void ensureConnected() {
         if (!connected) {
             throw new IllegalStateException("Storage provider is not connected");
         }
+    }
+
+    protected void logError(String message, Exception e) {
+        plugin.getLogger().log(Level.SEVERE, message, e);
     }
 }

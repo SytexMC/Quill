@@ -7,6 +7,7 @@
     </list>
     <writeAnnotations>
       <writeAnnotation name="lombok.Getter" />
+      <writeAnnotation name="me.levitate.quill.injection.annotation.Inject" />
     </writeAnnotations>
   </component>
   <component name="ExternalStorageConfigurationManager" enabled="true" />

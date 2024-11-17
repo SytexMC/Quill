@@ -1,18 +1,14 @@
 package me.levitate.quill.storage;
 
 import me.levitate.quill.storage.serializers.SerializationProvider;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
-public interface StorageProvider<K, V> {
-    void connect();
-    void disconnect();
-    void save();
-    void load();
+public interface StorageProvider<K, V> extends AutoCloseable {
+    void connect() throws Exception;
+    void disconnect() throws Exception;
+    void save() throws Exception;
+    void load() throws Exception;
     Optional<V> get(K key);
     V getOrDefault(K key, V defaultValue);
     void put(K key, V value);
@@ -26,4 +22,10 @@ public interface StorageProvider<K, V> {
     Collection<V> values();
     Set<Map.Entry<K, V>> entrySet();
     SerializationProvider getSerializationProvider();
+    boolean isConnected();
+
+    @Override
+    default void close() throws Exception {
+        disconnect();
+    }
 }

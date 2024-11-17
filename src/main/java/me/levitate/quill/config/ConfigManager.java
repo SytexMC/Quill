@@ -12,21 +12,18 @@ import lombok.Getter;
 import me.levitate.quill.config.annotation.Comment;
 import me.levitate.quill.config.annotation.Configuration;
 import me.levitate.quill.config.annotation.Path;
+import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
+import me.levitate.quill.injection.annotation.PostConstruct;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
+import java.io.*;
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -36,15 +33,20 @@ import java.util.regex.Pattern;
 @Module
 public class ConfigManager {
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^( *)(#.*)$");
-    private final Plugin plugin;
-    private final ObjectMapper mapper;
-    private final Map<Class<?>, Object> configCache;
-    private final Map<Class<?>, List<ReloadListener<?>>> reloadListeners;
 
-    public ConfigManager(Plugin plugin) {
-        this.plugin = plugin;
+    @Inject
+    private Plugin plugin;
+    private ObjectMapper mapper;
+
+    private Map<Class<?>, Object> configCache;
+    private Map<Class<?>, List<ReloadListener<?>>> reloadListeners;
+    private Map<String, Map<String, List<String>>> pathComments;
+
+    @PostConstruct
+    public void onConstruct() {
         this.configCache = new ConcurrentHashMap<>();
         this.reloadListeners = new ConcurrentHashMap<>();
+        this.pathComments = new HashMap<>();
 
         YAMLFactory yamlFactory = YAMLFactory.builder()
                 .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
@@ -59,7 +61,6 @@ public class ConfigManager {
                         .getDefaultVisibilityChecker()
                         .withFieldVisibility(JsonAutoDetect.Visibility.ANY));
 
-        // Register custom serializers for Bukkit types
         registerBukkitSerializers();
     }
 
@@ -137,23 +138,101 @@ public class ConfigManager {
 
         if (!file.exists()) {
             instance = configClass.getDeclaredConstructor().newInstance();
+            loadCommentsFromClass(configClass);
             save(instance);
             return instance;
         }
 
-        Map<String, String[]> comments = new HashMap<>();
-        List<String> fileContent = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-        collectComments(fileContent, comments);
+        // Load existing comments before reading the file
+        loadExistingComments(file);
 
+        // Create new instance and load values
         instance = mapper.readValue(file, configClass);
 
         if (autoUpdate) {
             T defaultInstance = configClass.getDeclaredConstructor().newInstance();
             updateConfiguration(instance, defaultInstance);
+
+            // Load comments from class annotations
+            loadCommentsFromClass(configClass);
+
             save(instance);
         }
 
         return instance;
+    }
+
+    private void loadCommentsFromClass(Class<?> configClass) {
+        Configuration config = configClass.getAnnotation(Configuration.class);
+        if (config == null) return;
+
+        String fileName = config.value();
+        Map<String, List<String>> comments = pathComments.computeIfAbsent(fileName, k -> new HashMap<>());
+
+        for (Field field : configClass.getDeclaredFields()) {
+            Comment comment = field.getAnnotation(Comment.class);
+            if (comment != null) {
+                Path path = field.getAnnotation(Path.class);
+                String key = path != null ? path.value() : field.getName();
+                comments.put(key, Arrays.asList(comment.value()));
+            }
+        }
+    }
+
+    private void loadExistingComments(File file) {
+        try {
+            List<String> lines = new ArrayList<>();
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
+            reader.close();
+
+            String currentPath = "";
+            List<String> currentComments = new ArrayList<>();
+            int indent = 0;
+
+            for (String currentLine : lines) {
+                String trimmed = currentLine.trim();
+
+                // Handle comments
+                if (trimmed.startsWith("#")) {
+                    currentComments.add(trimmed.substring(1).trim());
+                    continue;
+                }
+
+                // Handle key-value pairs
+                if (trimmed.contains(":")) {
+                    String key = trimmed.split(":")[0].trim();
+
+                    // Calculate path based on indentation
+                    if (currentLine.startsWith(" ")) {
+                        int currentIndent = currentLine.indexOf(key);
+                        if (currentIndent > indent) {
+                            currentPath += "." + key;
+                        } else if (currentIndent < indent) {
+                            currentPath = key;
+                        } else {
+                            currentPath = currentPath.substring(0, currentPath.lastIndexOf(".")) + "." + key;
+                        }
+                        indent = currentIndent;
+                    } else {
+                        currentPath = key;
+                        indent = 0;
+                    }
+
+                    // Store comments if there are any
+                    if (!currentComments.isEmpty()) {
+                        pathComments.computeIfAbsent(file.getName(), k -> new HashMap<>())
+                                .put(currentPath, new ArrayList<>(currentComments));
+                        currentComments.clear();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to load existing comments", e);
+        }
     }
 
     private void updateConfiguration(Object current, Object defaults) {
@@ -179,14 +258,23 @@ public class ConfigManager {
                 configFile.getParentFile().mkdirs();
             }
 
-            Map<String, String[]> comments = getConfigComments(config.getClass());
+            // Convert object to YAML
+            String yaml = mapper.writeValueAsString(config);
+            List<String> lines = new ArrayList<>(Arrays.asList(yaml.split("\n")));
 
-            String yamlContent = mapper.writeValueAsString(config);
+            // Insert comments
+            Map<String, List<String>> fileComments = pathComments.get(annotation.value());
+            if (fileComments != null) {
+                insertComments(lines, fileComments);
+            }
 
-            List<String> lines = new ArrayList<>(Arrays.asList(yamlContent.split("\n")));
-            insertComments(lines, comments);
-
-            Files.writeString(configFile.toPath(), String.join("\n", lines));
+            // Write to file
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(configFile))) {
+                for (String line : lines) {
+                    writer.write(line);
+                    writer.newLine();
+                }
+            }
 
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to save configuration: " + config.getClass().getSimpleName(), e);
@@ -250,21 +338,55 @@ public class ConfigManager {
         return line.substring(0, colonIndex).trim();
     }
 
-    private void insertComments(List<String> lines, Map<String, String[]> comments) {
+    private void insertComments(List<String> lines, Map<String, List<String>> comments) {
+        List<String> result = new ArrayList<>();
+        Map<Integer, String> indentationPaths = new HashMap<>();
+        String currentPath = "";
+        int currentIndent = 0;
+
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
-            String path = extractPath(line);
+            String trimmed = line.trim();
 
-            if (path != null && comments.containsKey(path)) {
-                String[] commentLines = comments.get(path);
-                List<String> formattedComments = new ArrayList<>();
-                for (String comment : commentLines) {
-                    formattedComments.add("# " + comment);
-                }
-                lines.addAll(i, formattedComments);
-                i += commentLines.length;
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                result.add(line);
+                continue;
             }
+
+            // Calculate indentation
+            int indent = line.indexOf(trimmed);
+            String key = trimmed.split(":")[0];
+
+            // Update current path based on indentation
+            if (indent > currentIndent) {
+                currentPath = currentPath.isEmpty() ? key : currentPath + "." + key;
+            } else if (indent < currentIndent) {
+                // Go back up the path tree
+                while (indent < currentIndent && !currentPath.isEmpty()) {
+                    currentPath = currentPath.contains(".") ?
+                            currentPath.substring(0, currentPath.lastIndexOf(".")) : "";
+                    currentIndent -= 2;
+                }
+                currentPath = currentPath.isEmpty() ? key : currentPath + "." + key;
+            } else if (indent == currentIndent) {
+                currentPath = currentPath.contains(".") ?
+                        currentPath.substring(0, currentPath.lastIndexOf(".")) + "." + key : key;
+            }
+            currentIndent = indent;
+
+            // Add comments if they exist for this path
+            List<String> pathComments = comments.get(currentPath);
+            if (pathComments != null) {
+                for (String comment : pathComments) {
+                    result.add(" ".repeat(indent) + "# " + comment);
+                }
+            }
+
+            result.add(line);
         }
+
+        lines.clear();
+        lines.addAll(result);
     }
 
     private abstract static class ItemStackMixin {

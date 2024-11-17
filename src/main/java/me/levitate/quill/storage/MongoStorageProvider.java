@@ -36,17 +36,33 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
     }
 
     @Override
-    public void connect() throws Exception {
+    public void connect() {
         synchronized (connectionLock) {
             try {
-                MongoClientSettings settings = MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString(mongoUri))
-                        .applyToConnectionPoolSettings(builder ->
-                                builder.maxConnectionIdleTime(60000, TimeUnit.MILLISECONDS))
-                        .retryWrites(true)
-                        .build();
+                // Parse connection string to determine SSL settings
+                ConnectionString connString = new ConnectionString(mongoUri);
 
-                mongoClient = MongoClients.create(settings);
+                // Build base settings
+                MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder()
+                        .applyConnectionString(connString)
+                        .applyToSocketSettings(builder ->
+                                builder.connectTimeout(10000, TimeUnit.MILLISECONDS)
+                                        .readTimeout(10000, TimeUnit.MILLISECONDS))
+                        .applyToConnectionPoolSettings(builder ->
+                                builder.maxConnectionIdleTime(60000, TimeUnit.MILLISECONDS)
+                                        .maxWaitTime(10000, TimeUnit.MILLISECONDS))
+                        .applyToServerSettings(builder ->
+                                builder.heartbeatFrequency(10000, TimeUnit.MILLISECONDS));
+
+                // Apply SSL settings if enabled in URI
+                if (connString.getSslEnabled() != null && connString.getSslEnabled()) {
+                    settingsBuilder.applyToSslSettings(builder ->
+                            builder.enabled(true)
+                                    .invalidHostNameAllowed(true));
+                }
+
+                // Create client with settings
+                mongoClient = MongoClients.create(settingsBuilder.build());
                 MongoDatabase database = mongoClient.getDatabase(databaseName);
                 collection = database.getCollection(collectionName);
 
@@ -55,24 +71,35 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
 
                 connected = true;
                 load();
+
+                plugin.getLogger().info("Successfully connected to MongoDB database");
             } catch (Exception e) {
-                logError("Failed to connect to MongoDB", e);
-                throw e;
+                String errorMsg = "Failed to connect to MongoDB: " + e.getMessage();
+                plugin.getLogger().log(Level.SEVERE, errorMsg, e);
+                throw new RuntimeException(errorMsg, e);
             }
         }
     }
 
     @Override
-    public void disconnect() throws Exception {
+    public void disconnect() {
         synchronized (connectionLock) {
             try {
-                if (mongoClient != null) {
+                if (connected) {
                     save();
-                    mongoClient.close();
+                }
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Error saving data during disconnect", e);
+            } finally {
+                if (mongoClient != null) {
+                    try {
+                        mongoClient.close();
+                    } catch (Exception e) {
+                        plugin.getLogger().log(Level.WARNING, "Error closing MongoDB connection", e);
+                    }
                     mongoClient = null;
                     collection = null;
                 }
-            } finally {
                 cache.clear();
                 connected = false;
             }
@@ -80,10 +107,14 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
     }
 
     @Override
-    public synchronized void save() throws Exception {
+    public synchronized void save() {
         ensureConnected();
-        try {
-            for (Map.Entry<K, V> entry : cache.entrySet()) {
+
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Map.Entry<K, V> entry : cache.entrySet()) {
+            try {
                 String json = mapper.writeValueAsString(entry.getValue());
                 Document document = Document.parse(json);
                 document.put("_id", entry.getKey().toString());
@@ -93,42 +124,82 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
                         document,
                         new ReplaceOptions().upsert(true)
                 );
+                successCount++;
+            } catch (Exception e) {
+                failCount++;
+                plugin.getLogger().log(Level.WARNING,
+                        "Failed to save document for key " + entry.getKey(), e);
             }
-        } catch (Exception e) {
-            logError("Failed to save data to MongoDB", e);
-            throw e;
+        }
+
+        if (failCount > 0) {
+            plugin.getLogger().warning(String.format(
+                    "MongoDB save operation completed with %d successes and %d failures",
+                    successCount, failCount
+            ));
         }
     }
 
     @Override
-    public synchronized void load() throws Exception {
+    public synchronized void load() {
         ensureConnected();
+
         try {
-            cache.clear();
+            Map<K, V> tempCache = new HashMap<>();
             FindIterable<Document> documents = collection.find();
 
             for (Document doc : documents) {
-                String idStr = doc.getString("_id");
-                doc.remove("_id");
-
                 try {
+                    String idStr = doc.getString("_id");
+                    doc.remove("_id");
+
                     K key = convertStringToKey(idStr);
                     V value = mapper.readValue(doc.toJson(), valueClass);
-                    cache.put(key, value);
+                    tempCache.put(key, value);
                 } catch (Exception e) {
-                    logError("Failed to load document: " + idStr, e);
+                    plugin.getLogger().log(Level.WARNING,
+                            "Failed to load document with ID " + doc.get("_id"), e);
                 }
             }
+
+            // Only update cache if all documents were processed
+            cache.clear();
+            cache.putAll(tempCache);
+
+            plugin.getLogger().info(String.format(
+                    "Successfully loaded %d documents from MongoDB",
+                    cache.size()
+            ));
         } catch (Exception e) {
-            logError("Failed to load data from MongoDB", e);
-            throw e;
+            String errorMsg = "Failed to load data from MongoDB";
+            plugin.getLogger().log(Level.SEVERE, errorMsg, e);
+            throw new RuntimeException(errorMsg, e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private K convertStringToKey(String idStr) {
+        try {
+            if (keyClass == String.class) {
+                return (K) idStr;
+            } else if (keyClass == UUID.class) {
+                return (K) UUID.fromString(idStr);
+            } else if (keyClass == Integer.class) {
+                return (K) Integer.valueOf(idStr);
+            } else if (keyClass == Long.class) {
+                return (K) Long.valueOf(idStr);
+            } else {
+                throw new IllegalArgumentException("Unsupported key type: " + keyClass);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to convert key '" + idStr +
+                    "' to type " + keyClass.getSimpleName(), e);
         }
     }
 
     @Override
     public Optional<V> get(K key) {
         ensureConnected();
-        Objects.requireNonNull(key, "Key cannot be null");
         return Optional.ofNullable(cache.get(key));
     }
 
@@ -137,19 +208,8 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
         ensureConnected();
         Objects.requireNonNull(key, "Key cannot be null");
         Objects.requireNonNull(value, "Value cannot be null");
-        
+
         cache.put(key, value);
-        try {
-            Document document = Document.parse(mapper.writeValueAsString(value));
-            document.put("_id", key.toString());
-            collection.replaceOne(
-                Filters.eq("_id", key.toString()),
-                document,
-                new ReplaceOptions().upsert(true)
-            );
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save document: " + key, e);
-        }
     }
 
     @Override
@@ -157,11 +217,10 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
         ensureConnected();
         Objects.requireNonNull(key, "Key cannot be null");
         Objects.requireNonNull(updater, "Updater cannot be null");
-        
+
         V value = cache.get(key);
         if (value != null) {
             updater.accept(value);
-            put(key, value);
         }
     }
 
@@ -169,12 +228,14 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
     public synchronized boolean remove(K key) {
         ensureConnected();
         Objects.requireNonNull(key, "Key cannot be null");
-        
-        if (cache.remove(key) != null) {
+
+        try {
             collection.deleteOne(Filters.eq("_id", key.toString()));
-            return true;
+            return cache.remove(key) != null;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to remove document for key " + key + ": " + e.getMessage());
+            return false;
         }
-        return false;
     }
 
     @Override
@@ -182,22 +243,7 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
         ensureConnected();
         Objects.requireNonNull(keys, "Keys collection cannot be null");
         Objects.requireNonNull(updater, "Updater cannot be null");
-        
-        keys.forEach(key -> update(key, updater));
-    }
 
-    @SuppressWarnings("unchecked")
-    private K convertStringToKey(String idStr) {
-        if (keyClass == String.class) {
-            return (K) idStr;
-        } else if (keyClass == UUID.class) {
-            return (K) UUID.fromString(idStr);
-        } else if (keyClass == Integer.class) {
-            return (K) Integer.valueOf(idStr);
-        } else if (keyClass == Long.class) {
-            return (K) Long.valueOf(idStr);
-        } else {
-            throw new IllegalArgumentException("Unsupported key type: " + keyClass);
-        }
+        keys.forEach(key -> update(key, updater));
     }
 }

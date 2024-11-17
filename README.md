@@ -68,7 +68,7 @@ dependencies {
 
 ## Documentation
 
-For detailed documentation, please visit our [Wiki](https://github.com/xLevitate/Quill/wiki).
+For detailed documentation, please visit our [Wiki](https://quill.xlevitate.co/).
 
 ## Requirements
 

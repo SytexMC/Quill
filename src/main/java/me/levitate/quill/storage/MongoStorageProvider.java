@@ -10,6 +10,9 @@ import org.bson.Document;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bukkit.plugin.Plugin;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.security.KeyStore;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -39,34 +42,16 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
     public void connect() {
         synchronized (connectionLock) {
             try {
-                // Parse connection string to determine SSL settings
+                // Parse connection string and get settings
                 ConnectionString connString = new ConnectionString(mongoUri);
-
-                // Build base settings
-                MongoClientSettings.Builder settingsBuilder = MongoClientSettings.builder()
-                        .applyConnectionString(connString)
-                        .applyToSocketSettings(builder ->
-                                builder.connectTimeout(10000, TimeUnit.MILLISECONDS)
-                                        .readTimeout(10000, TimeUnit.MILLISECONDS))
-                        .applyToConnectionPoolSettings(builder ->
-                                builder.maxConnectionIdleTime(60000, TimeUnit.MILLISECONDS)
-                                        .maxWaitTime(10000, TimeUnit.MILLISECONDS))
-                        .applyToServerSettings(builder ->
-                                builder.heartbeatFrequency(10000, TimeUnit.MILLISECONDS));
-
-                // Apply SSL settings if enabled in URI
-                if (connString.getSslEnabled() != null && connString.getSslEnabled()) {
-                    settingsBuilder.applyToSslSettings(builder ->
-                            builder.enabled(true)
-                                    .invalidHostNameAllowed(true));
-                }
+                MongoClientSettings settings = createClientSettings(connString);
 
                 // Create client with settings
-                mongoClient = MongoClients.create(settingsBuilder.build());
+                mongoClient = MongoClients.create(settings);
                 MongoDatabase database = mongoClient.getDatabase(databaseName);
                 collection = database.getCollection(collectionName);
 
-                // Test connection
+                // Verify connection with simple operation
                 collection.countDocuments();
 
                 connected = true;
@@ -75,9 +60,45 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
                 plugin.getLogger().info("Successfully connected to MongoDB database");
             } catch (Exception e) {
                 String errorMsg = "Failed to connect to MongoDB: " + e.getMessage();
-                plugin.getLogger().log(Level.SEVERE, errorMsg, e);
+                plugin.getLogger().log(Level.SEVERE, errorMsg);
                 throw new RuntimeException(errorMsg, e);
             }
+        }
+    }
+
+    private MongoClientSettings createClientSettings(ConnectionString connString) {
+        try {
+            // Create SSL context with system trust store
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init((KeyStore) null);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, tmf.getTrustManagers(), null);
+
+            return MongoClientSettings.builder()
+                    .applyConnectionString(connString)
+                    .applyToSslSettings(builder -> {
+                        // Use SSL settings from connection string, or default to enabled for Atlas
+                        boolean sslEnabled = connString.getSslEnabled() != null ?
+                                connString.getSslEnabled() :
+                                mongoUri.contains("mongodb+srv://");
+
+                        builder.enabled(sslEnabled)
+                                .context(sslContext)
+                                .invalidHostNameAllowed(true);
+                    })
+                    .applyToSocketSettings(builder ->
+                            builder.connectTimeout(20000, TimeUnit.MILLISECONDS)
+                                    .readTimeout(20000, TimeUnit.MILLISECONDS))
+                    .applyToServerSettings(builder ->
+                            builder.heartbeatFrequency(10000, TimeUnit.MILLISECONDS))
+                    .applyToClusterSettings(builder ->
+                            builder.serverSelectionTimeout(20000, TimeUnit.MILLISECONDS))
+                    .applyToConnectionPoolSettings(builder ->
+                            builder.maxWaitTime(20000, TimeUnit.MILLISECONDS)
+                                    .maxConnectionIdleTime(60000, TimeUnit.MILLISECONDS))
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create MongoDB client settings", e);
         }
     }
 
@@ -88,8 +109,6 @@ public class MongoStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
                 if (connected) {
                     save();
                 }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Error saving data during disconnect", e);
             } finally {
                 if (mongoClient != null) {
                     try {

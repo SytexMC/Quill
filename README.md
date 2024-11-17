@@ -74,8 +74,6 @@ For detailed documentation, please visit our [Wiki](https://quill.xlevitate.co/)
 
 - Java 17 or higher
 - Paper 1.20.4 or higher
-- (Optional) PlaceholderAPI for placeholder support
-- (Optional) Vault for economy support
 
 ## Support
 

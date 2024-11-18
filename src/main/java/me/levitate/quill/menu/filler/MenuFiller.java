@@ -1,17 +1,20 @@
 package me.levitate.quill.menu.filler;
 
-import me.levitate.quill.menu.item.MenuItem;
 import me.levitate.quill.menu.QuillMenu;
+import me.levitate.quill.menu.item.MenuItem;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class MenuFiller {
     private final QuillMenu menu;
-    private ItemStack fillItem;
     private final Set<Integer> excludedSlots = new HashSet<>();
-    private boolean skipExisting = true;
     private final Map<Character, ItemStack> patternItems = new HashMap<>();
+    private ItemStack fillItem;
+    private boolean skipExisting = true;
 
     public MenuFiller(QuillMenu menu) {
         this.menu = menu;
@@ -132,7 +135,7 @@ public class MenuFiller {
             for (int col = 0; col < rowPattern.length(); col++) {
                 char c = rowPattern.charAt(col);
                 ItemStack item = patternItems.get(c);
-                
+
                 if (item != null) {
                     int slot = row * 9 + col;
                     if (canFillSlot(slot)) {
@@ -152,16 +155,16 @@ public class MenuFiller {
     }
 
     private boolean canFillSlot(int slot) {
-        return !excludedSlots.contains(slot) && 
-               (!skipExisting || !menu.hasItem(slot));
+        return !excludedSlots.contains(slot) &&
+                (!skipExisting || !menu.hasItem(slot));
     }
 
     private void fillSlot(int slot, ItemStack item) {
         if (canFillSlot(slot)) {
             menu.addItem(MenuItem.builder()
-                .item(item)
-                .slot(slot)
-                .build());
+                    .item(item)
+                    .slot(slot)
+                    .build());
         }
     }
 

@@ -16,13 +16,13 @@ public @interface Configuration {
      * @return The file name
      */
     String value() default "config.yml";
-    
+
     /**
      * Whether to automatically update the configuration when new fields are added
      * @return True to auto update
      */
     boolean autoUpdate() default true;
-    
+
     /**
      * The configuration version, used for migrations
      * @return The version number

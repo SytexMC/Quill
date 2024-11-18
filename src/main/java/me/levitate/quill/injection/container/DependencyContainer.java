@@ -1,13 +1,14 @@
-package me.levitate.quill.injection;
+package me.levitate.quill.injection.container;
 
 import lombok.Getter;
+import me.levitate.quill.cache.CacheManager;
 import me.levitate.quill.config.ConfigManager;
 import me.levitate.quill.event.EventManager;
+import me.levitate.quill.hook.HookManager;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.annotation.PostConstruct;
 import me.levitate.quill.injection.annotation.PreDestroy;
-import me.levitate.quill.hook.HookManager;
 import me.levitate.quill.injection.exception.DependencyException;
 import me.levitate.quill.manager.CommandManager;
 import me.levitate.quill.utils.common.TaskScheduler;
@@ -17,16 +18,25 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class DependencyContainer {
     private final Map<Class<?>, Object> modules = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Method>> postConstructMethods = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Method>> preDestroyMethods = new ConcurrentHashMap<>();
-    @Getter private final Plugin hostPlugin;
-    @Getter private final Plugin quillPlugin;
+
+    @Getter
+    private final Plugin hostPlugin;
+
+    @Getter
+    private final Plugin quillPlugin;
+
     private final Logger logger;
 
     public DependencyContainer(Plugin hostPlugin, Plugin quillPlugin) {
@@ -40,16 +50,14 @@ public class DependencyContainer {
 
     private void registerCoreModules() {
         try {
-            // Register core modules in dependency order
+            registerModule(CacheManager.class);
             registerModule(ConfigManager.class);
             registerModule(HookManager.class);
             registerModule(TaskScheduler.class);
             registerModule(EventManager.class);
             registerModule(CommandManager.class);
         } catch (DependencyException e) {
-            logger.severe("Failed to register core modules: " + e.getMessage());
-            logger.severe("Stack trace for debugging:");
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Failed to register core modules:", e);
         }
     }
 
@@ -87,7 +95,7 @@ public class DependencyContainer {
         }
     }
 
-    private void processPluginClass(Class<?> pluginClass) throws Exception {
+    private void processPluginClass(Class<?> pluginClass) {
         modules.put(pluginClass, hostPlugin);
         injectDependencies(hostPlugin);
         scanLifecycleMethods(pluginClass);

@@ -8,13 +8,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class PlaceholderFactory implements PluginHook {
     private static PlaceholderFactory instance;
-    private boolean enabled = false;
     private final Map<String, DynamicExpansion> registeredExpansions = new HashMap<>();
+    private boolean enabled = false;
 
     public PlaceholderFactory() {
         instance = this;
@@ -25,6 +27,16 @@ public class PlaceholderFactory implements PluginHook {
             instance = new PlaceholderFactory();
         }
         return instance;
+    }
+
+    /**
+     * Sets placeholders in a text for a player
+     * @param player The player to set placeholders for
+     * @param text The text containing placeholders
+     * @return The text with placeholders replaced
+     */
+    public static String setPlaceholders(Player player, String text) {
+        return PlaceholderAPI.setPlaceholders(player, text);
     }
 
     @Override
@@ -44,16 +56,6 @@ public class PlaceholderFactory implements PluginHook {
     @Override
     public String getPluginName() {
         return "PlaceholderAPI";
-    }
-
-    /**
-     * Sets placeholders in a text for a player
-     * @param player The player to set placeholders for
-     * @param text The text containing placeholders
-     * @return The text with placeholders replaced
-     */
-    public static String setPlaceholders(Player player, String text) {
-        return PlaceholderAPI.setPlaceholders(player, text);
     }
 
     /**

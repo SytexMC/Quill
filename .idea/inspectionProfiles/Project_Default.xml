@@ -12,16 +12,19 @@
         <list>
           <option value="Quill" />
           <option value="Quill" />
+          <option value="Quill" />
         </list>
       </option>
       <option name="ignoredPackages">
         <list>
           <option value="junit:junit:4.10" />
           <option value="com.google.code.gson:gson:2.8.0" />
+          <option value="io.netty:netty-common:4.1.113.Final" />
         </list>
       </option>
       <option name="ignoredReasons">
         <list>
+          <option value="Not exploitable" />
           <option value="Not exploitable" />
           <option value="Not exploitable" />
         </list>

@@ -1,7 +1,8 @@
 package me.levitate.quill.storage.serializers.location;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import org.bukkit.Location;
 
 import java.io.IOException;

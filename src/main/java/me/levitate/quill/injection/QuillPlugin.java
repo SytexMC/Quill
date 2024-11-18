@@ -3,6 +3,7 @@ package me.levitate.quill.injection;
 import lombok.Getter;
 import me.levitate.quill.Quill;
 import me.levitate.quill.injection.annotation.Module;
+import me.levitate.quill.injection.container.DependencyContainer;
 import me.levitate.quill.injection.exception.DependencyException;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -121,7 +122,12 @@ public abstract class QuillPlugin extends JavaPlugin {
     }
 
     // Optional methods for plugins to override
-    protected void onPluginLoad() {}
-    protected void onPluginEnable() {}
-    protected void onPluginDisable() {}
+    protected void onPluginLoad() {
+    }
+
+    protected void onPluginEnable() {
+    }
+
+    protected void onPluginDisable() {
+    }
 }

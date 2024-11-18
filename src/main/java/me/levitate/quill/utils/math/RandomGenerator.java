@@ -58,7 +58,7 @@ public class RandomGenerator {
                 return entry.getKey();
             }
         }
-        
+
         return null;
     }
 
@@ -69,15 +69,15 @@ public class RandomGenerator {
         if (list == null || list.isEmpty() || count <= 0) {
             return Collections.emptyList();
         }
-        
+
         List<T> copy = new ArrayList<>(list);
         List<T> result = new ArrayList<>();
         int size = Math.min(count, copy.size());
-        
+
         for (int i = 0; i < size; i++) {
             result.add(copy.remove(random.nextInt(copy.size())));
         }
-        
+
         return result;
     }
 
@@ -89,7 +89,7 @@ public class RandomGenerator {
         double r = Math.sqrt(random.nextDouble()) * radius;
         double x = center.getX() + r * Math.cos(angle);
         double z = center.getZ() + r * Math.sin(angle);
-        
+
         return new Location(center.getWorld(), x, center.getY(), z);
     }
 

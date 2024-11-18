@@ -23,6 +23,10 @@ public class MenuItem implements Cloneable {
         this.paginatable = builder.paginatable;
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     @Override
     public MenuItem clone() {
         try {
@@ -68,9 +72,5 @@ public class MenuItem implements Cloneable {
         public MenuItem build() {
             return new MenuItem(this);
         }
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 }

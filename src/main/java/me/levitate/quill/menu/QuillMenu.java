@@ -25,16 +25,26 @@ public abstract class QuillMenu {
     protected final List<Consumer<InventoryOpenEvent>> openHandlers;
     protected final List<Consumer<InventoryDragEvent>> dragHandlers;
 
-    @Getter protected String title;
-    @Getter protected int size;
-    @Getter protected int currentPage = 1;
-    @Getter protected int totalPages = 1;
-    @Getter protected boolean cancelAllClicks = true;
-    @Getter protected Sound clickSound;
-    @Getter protected float clickVolume = 1.0f;
-    @Getter protected float clickPitch = 1.0f;
-    @Getter protected ItemStack pageFiller;
-    @Getter protected int[] pageSlots;
+    @Getter
+    protected String title;
+    @Getter
+    protected int size;
+    @Getter
+    protected int currentPage = 1;
+    @Getter
+    protected int totalPages = 1;
+    @Getter
+    protected boolean cancelAllClicks = true;
+    @Getter
+    protected Sound clickSound;
+    @Getter
+    protected float clickVolume = 1.0f;
+    @Getter
+    protected float clickPitch = 1.0f;
+    @Getter
+    protected ItemStack pageFiller;
+    @Getter
+    protected int[] pageSlots;
 
     protected QuillMenu() {
         this.items = new HashMap<>();
@@ -53,9 +63,11 @@ public abstract class QuillMenu {
 
     protected abstract void onCreate();
 
-    protected void onOpen(Player player) {}
+    protected void onOpen(Player player) {
+    }
 
-    protected void onClose(Player player) {}
+    protected void onClose(Player player) {
+    }
 
     protected boolean onClick(Player player, InventoryClickEvent event) {
         return true;
@@ -121,7 +133,7 @@ public abstract class QuillMenu {
 
     private int[] generateDefaultPageSlots() {
         List<Integer> slots = new ArrayList<>();
-        for (int row = 1; row < size/9-1; row++) {
+        for (int row = 1; row < size / 9 - 1; row++) {
             for (int col = 1; col < 8; col++) {
                 slots.add(row * 9 + col);
             }

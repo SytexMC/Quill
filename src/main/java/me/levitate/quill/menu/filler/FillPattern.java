@@ -5,30 +5,30 @@ import lombok.Getter;
 @Getter
 public enum FillPattern {
     BORDER(new String[]{
-        "XXXXXXXXX",
-        "X       X",
-        "X       X",
-        "X       X",
-        "X       X",
-        "XXXXXXXXX"
+            "XXXXXXXXX",
+            "X       X",
+            "X       X",
+            "X       X",
+            "X       X",
+            "XXXXXXXXX"
     }),
-    
+
     CORNERS(new String[]{
-        "X       X",
-        "         ",
-        "         ",
-        "         ",
-        "         ",
-        "X       X"
+            "X       X",
+            "         ",
+            "         ",
+            "         ",
+            "         ",
+            "X       X"
     }),
-    
+
     TOP_BORDER(new String[]{
-        "XXXXXXXXX",
-        "         ",
-        "         ",
-        "         ",
-        "         ",
-        "         "
+            "XXXXXXXXX",
+            "         ",
+            "         ",
+            "         ",
+            "         ",
+            "         "
     }),
 
     LEFT_BORDER(new String[]{
@@ -48,14 +48,14 @@ public enum FillPattern {
             "        X",
             "        X"
     }),
-    
+
     BOTTOM_BORDER(new String[]{
-        "         ",
-        "         ",
-        "         ",
-        "         ",
-        "         ",
-        "XXXXXXXXX"
+            "         ",
+            "         ",
+            "         ",
+            "         ",
+            "         ",
+            "XXXXXXXXX"
     });
 
     private final String[] pattern;

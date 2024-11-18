@@ -14,14 +14,14 @@ public class RecipeBuilder {
     private final Plugin plugin;
     private final ItemStack result;
     private String recipeId;
-    
+
     // Shaped Recipe
     private String[] shapedPattern;
     private Map<Character, RecipeChoice> shapedIngredients;
-    
+
     // Shapeless Recipe
     private List<RecipeChoice> shapelessIngredients;
-    
+
     // Furnace Recipe
     private RecipeChoice furnaceInput;
     private float furnaceExperience;
@@ -62,13 +62,13 @@ public class RecipeBuilder {
         if (pattern.length != 3) {
             throw new IllegalArgumentException("Pattern must be exactly 3 rows");
         }
-        
+
         this.shapedPattern = pattern;
         this.shapedIngredients = new HashMap<>();
-        
-        ingredients.forEach((key, ingredient) -> 
-            this.shapedIngredients.put(key, createRecipeChoice(ingredient)));
-        
+
+        ingredients.forEach((key, ingredient) ->
+                this.shapedIngredients.put(key, createRecipeChoice(ingredient)));
+
         return this;
     }
 
@@ -129,11 +129,11 @@ public class RecipeBuilder {
         if (furnaceInput != null) {
             NamespacedKey key = new NamespacedKey(plugin, baseId + "_furnace");
             FurnaceRecipe recipe = new FurnaceRecipe(
-                key,
-                result,
-                furnaceInput,
-                furnaceExperience,
-                furnaceCookingTime
+                    key,
+                    result,
+                    furnaceInput,
+                    furnaceExperience,
+                    furnaceCookingTime
             );
             plugin.getServer().addRecipe(recipe, true);
             registeredKeys.add(key);
@@ -147,7 +147,7 @@ public class RecipeBuilder {
      */
     public void unregister() {
         if (recipeId == null) return;
-        
+
         plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_shaped"));
         plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_shapeless"));
         plugin.getServer().removeRecipe(new NamespacedKey(plugin, recipeId + "_furnace"));
@@ -164,24 +164,24 @@ public class RecipeBuilder {
             if (collection.isEmpty()) {
                 throw new IllegalArgumentException("Ingredient collection cannot be empty");
             }
-            
+
             Object first = collection.iterator().next();
             if (first instanceof ItemStack) {
                 return new RecipeChoice.ExactChoice(
-                    collection.stream()
-                        .map(item -> (ItemStack) item)
-                        .collect(Collectors.toList())
+                        collection.stream()
+                                .map(item -> (ItemStack) item)
+                                .collect(Collectors.toList())
                 );
             } else if (first instanceof Material) {
                 return new RecipeChoice.MaterialChoice(
-                    collection.stream()
-                        .map(mat -> (Material) mat)
-                        .collect(Collectors.toList())
+                        collection.stream()
+                                .map(mat -> (Material) mat)
+                                .collect(Collectors.toList())
                 );
             }
         }
-        
-        throw new IllegalArgumentException("Unsupported ingredient type: " + 
-            (ingredient != null ? ingredient.getClass().getName() : "null"));
+
+        throw new IllegalArgumentException("Unsupported ingredient type: " +
+                (ingredient != null ? ingredient.getClass().getName() : "null"));
     }
 }

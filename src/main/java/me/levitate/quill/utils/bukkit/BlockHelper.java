@@ -15,7 +15,7 @@ public class BlockHelper {
     public static List<Block> getBlocksInRadius(Location center, double radius) {
         List<Block> blocks = new ArrayList<>();
         int radiusInt = (int) radius;
-        
+
         for (int x = -radiusInt; x <= radiusInt; x++) {
             for (int y = -radiusInt; y <= radiusInt; y++) {
                 for (int z = -radiusInt; z <= radiusInt; z++) {
@@ -26,7 +26,7 @@ public class BlockHelper {
                 }
             }
         }
-        
+
         return blocks;
     }
 
@@ -35,15 +35,15 @@ public class BlockHelper {
      */
     public static List<Block> getBlocksBetween(Location loc1, Location loc2) {
         List<Block> blocks = new ArrayList<>();
-        
+
         int maxDistance = (int) loc1.distance(loc2);
         Vector direction = loc2.toVector().subtract(loc1.toVector()).normalize();
-        
+
         for (int i = 0; i <= maxDistance; i++) {
             Location loc = loc1.clone().add(direction.clone().multiply(i));
             blocks.add(loc.getBlock());
         }
-        
+
         return blocks;
     }
 
@@ -68,7 +68,7 @@ public class BlockHelper {
         Block feet = location.getBlock();
         Block head = feet.getRelative(BlockFace.UP);
         Block ground = feet.getRelative(BlockFace.DOWN);
-        
+
         return !isSolid(feet) && !isSolid(head) && isSolid(ground);
     }
 }

@@ -10,7 +10,7 @@ public class SoundHelper {
     public static void playSound(Player player, Sound sound, float volume, float pitch) {
         player.playSound(player.getLocation(), sound, volume, pitch);
     }
-    
+
     public static void playSound(Location location, Sound sound, float volume, float pitch) {
         location.getWorld().playSound(location, sound, volume, pitch);
     }

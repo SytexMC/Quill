@@ -13,10 +13,10 @@ public class BasicLocationDeserializer extends JsonDeserializer<SimpleLocation> 
     public SimpleLocation deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         JsonNode node = p.getCodec().readTree(p);
         return new SimpleLocation(
-            node.get("world").asText(),
-            node.get("x").asDouble(),
-            node.get("y").asDouble(),
-            node.get("z").asDouble()
+                node.get("world").asText(),
+                node.get("x").asDouble(),
+                node.get("y").asDouble(),
+                node.get("z").asDouble()
         );
     }
 }

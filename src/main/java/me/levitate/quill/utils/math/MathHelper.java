@@ -43,11 +43,11 @@ public class MathHelper {
             ScriptEngineManager mgr = new ScriptEngineManager();
             ScriptEngine engine = mgr.getEngineByName("JavaScript");
             Object result = engine.eval(expression);
-            
+
             if (result instanceof Number) {
                 return OptionalDouble.of(((Number) result).doubleValue());
             }
-            
+
             return OptionalDouble.empty();
         } catch (ScriptException ex) {
             return OptionalDouble.empty();

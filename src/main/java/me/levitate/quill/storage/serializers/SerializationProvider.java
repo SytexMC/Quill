@@ -15,8 +15,8 @@ import org.bukkit.World;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.UUID;
+import java.util.function.Function;
 
 public class SerializationProvider {
     private final SimpleModule module;
@@ -29,14 +29,11 @@ public class SerializationProvider {
         this.serializers = new HashMap<>();
         this.deserializers = new HashMap<>();
         this.stringConverters = new HashMap<>();
-        registerDefaultSerializers();
-    }
 
-    private void registerDefaultSerializers() {
         // Register built-in serializers
         registerSerializer(org.bukkit.Location.class, new LocationSerializer(), new LocationDeserializer());
         registerSerializer(org.bukkit.inventory.ItemStack.class, new ItemStackSerializer(), new ItemStackDeserializer());
-        
+
         // Register built-in string converters
         registerStringConverter(java.util.UUID.class, UUID::toString, UUID::fromString);
         registerStringConverter(org.bukkit.Material.class, Material::name, Material::valueOf);
@@ -68,8 +65,8 @@ public class SerializationProvider {
         CustomConverter<T> converter = new CustomConverter<>(toString, fromString);
         stringConverters.put(type, converter);
         registerSerializer(type,
-            new StringBasedSerializer<>(toString),
-            new StringBasedDeserializer<>(type, fromString));
+                new StringBasedSerializer<>(toString),
+                new StringBasedDeserializer<>(type, fromString));
     }
 
     /**

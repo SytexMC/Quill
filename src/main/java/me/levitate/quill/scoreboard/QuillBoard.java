@@ -1,7 +1,7 @@
 package me.levitate.quill.scoreboard;
 
+import lombok.Setter;
 import me.levitate.quill.chat.Chat;
-import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.hook.hooks.PlaceholderFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -19,13 +19,17 @@ public class QuillBoard {
     private final Plugin plugin;
     private final Set<UUID> viewers;
     private final List<String> lines;
-    private String title;
-    private int updateInterval;
-    private int taskId = -1;
-    private boolean placeholderSupport;
     private final Map<UUID, Scoreboard> playerPreviousScoreboards = new ConcurrentHashMap<>();
+    private String title;
+    private int taskId = -1;
 
-    private QuillBoard(Plugin plugin, String title) {
+    @Setter
+    private boolean placeholderSupport;
+
+    @Setter
+    private int updateInterval;
+
+    public QuillBoard(Plugin plugin, String title) {
         this.plugin = plugin;
         this.title = title;
         this.viewers = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -139,12 +143,9 @@ public class QuillBoard {
 
         // Restore their previous scoreboard if they had one
         Scoreboard previousScoreboard = playerPreviousScoreboards.remove(uuid);
-        if (previousScoreboard != null) {
-            player.setScoreboard(previousScoreboard);
-        } else {
-            // If no previous scoreboard, set to main scoreboard
-            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-        }
+
+        // If no previous scoreboard, set to main scoreboard
+        player.setScoreboard(Objects.requireNonNullElseGet(previousScoreboard, () -> Bukkit.getScoreboardManager().getMainScoreboard()));
     }
 
     /**
@@ -191,7 +192,6 @@ public class QuillBoard {
         if (!player.isOnline()) return;
 
         ScoreboardManager manager = Bukkit.getScoreboardManager();
-        if (manager == null) return;
 
         Scoreboard scoreboard = manager.getNewScoreboard();
         Objective objective = scoreboard.registerNewObjective(
@@ -225,7 +225,7 @@ public class QuillBoard {
     }
 
     private String getUniqueEntry(int score) {
-        return "§" + (score > 9 ? String.valueOf((char)('a' + score - 10)) : String.valueOf(score));
+        return "§" + (score > 9 ? String.valueOf((char) ('a' + score - 10)) : String.valueOf(score));
     }
 
     /**
@@ -268,8 +268,8 @@ public class QuillBoard {
      */
     public static class Builder {
         private final Plugin plugin;
-        private String title = "Scoreboard";
         private final List<String> lines = new ArrayList<>();
+        private String title = "Scoreboard";
         private int updateInterval = 20;
         private boolean placeholderSupport = true;
 

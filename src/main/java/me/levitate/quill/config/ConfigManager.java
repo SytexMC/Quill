@@ -1,438 +1,340 @@
 package me.levitate.quill.config;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import lombok.Getter;
 import me.levitate.quill.config.annotation.Comment;
 import me.levitate.quill.config.annotation.Configuration;
 import me.levitate.quill.config.annotation.Path;
+import me.levitate.quill.config.exception.ConfigurationException;
+import me.levitate.quill.config.serializer.ConfigurationSerializer;
+import me.levitate.quill.config.serializer.registry.SerializerRegistry;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.annotation.PostConstruct;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.*;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 @Module
 public class ConfigManager {
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("^( *)(#.*)$");
-
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*#.*$");
+    private final Map<Class<?>, Object> configurations = new ConcurrentHashMap<>();
+    private final Map<Class<?>, List<Consumer<?>>> reloadListeners = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, List<String>>> configComments = new ConcurrentHashMap<>();
+    private final SerializerRegistry serializerRegistry;
+    private final Yaml yaml;
     @Inject
     private Plugin plugin;
-    private ObjectMapper mapper;
 
-    private Map<Class<?>, Object> configCache;
-    private Map<Class<?>, List<ReloadListener<?>>> reloadListeners;
-    private Map<String, Map<String, List<String>>> pathComments;
+    public ConfigManager() {
+        DumperOptions options = new DumperOptions();
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        options.setPrettyFlow(true);
+        options.setIndent(2);
+
+        LoaderOptions loaderOptions = new LoaderOptions();
+        Constructor constructor = new Constructor(new LoaderOptions());
+        Representer representer = new Representer(options);
+
+        this.yaml = new Yaml(constructor, representer, options);
+        this.serializerRegistry = new SerializerRegistry();
+    }
 
     @PostConstruct
-    public void onConstruct() {
-        this.configCache = new ConcurrentHashMap<>();
-        this.reloadListeners = new ConcurrentHashMap<>();
-        this.pathComments = new HashMap<>();
-
-        YAMLFactory yamlFactory = YAMLFactory.builder()
-                .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-                .enable(YAMLGenerator.Feature.LITERAL_BLOCK_STYLE)
-                .build();
-
-        this.mapper = new ObjectMapper(yamlFactory)
-                .enable(SerializationFeature.INDENT_OUTPUT)
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .setVisibility(new ObjectMapper()
-                        .getSerializationConfig()
-                        .getDefaultVisibilityChecker()
-                        .withFieldVisibility(JsonAutoDetect.Visibility.ANY));
-
-        registerBukkitSerializers();
+    public void init() {
+        // Scan for and load all @Configuration classes
+        scanForConfigurations();
     }
 
-    public static ItemStack deserializeItemStack(String data) {
-        try {
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64Coder.decodeLines(data));
-            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
-            ItemStack item = (ItemStack) dataInput.readObject();
-            dataInput.close();
-            return item;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize ItemStack", e);
-        }
+    public <T> void registerSerializer(ConfigurationSerializer<T> serializer) {
+        serializerRegistry.registerSerializer(serializer);
     }
 
-    private void registerBukkitSerializers() {
-        mapper.addMixIn(ItemStack.class, ItemStackMixin.class);
-        mapper.addMixIn(Location.class, LocationMixin.class);
+    @SuppressWarnings("unchecked")
+    public <T> T getConfig(Class<T> configClass) {
+        return (T) Optional.ofNullable(configurations.get(configClass))
+                .orElseThrow(() -> new ConfigurationException("Configuration not loaded: " + configClass.getName()));
     }
 
     public <T> void addReloadListener(Class<T> configClass, Consumer<T> listener) {
-        reloadListeners.computeIfAbsent(configClass, k -> new ArrayList<>())
-                .add(new ReloadListener<>(configClass, listener));
-    }
-
-    public <T> void removeReloadListener(Class<T> configClass, Consumer<T> listener) {
-        List<ReloadListener<?>> listeners = reloadListeners.get(configClass);
-        if (listeners != null) {
-            listeners.removeIf(l -> l.listener() == listener);
-        }
-    }
-
-    public void clearReloadListeners(Class<?> configClass) {
-        reloadListeners.remove(configClass);
-    }
-
-    public void clearAllReloadListeners() {
-        reloadListeners.clear();
+        reloadListeners.computeIfAbsent(configClass, k -> new ArrayList<>()).add(listener);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T get(Class<T> configClass) {
-        return (T) configCache.get(configClass);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T load(Class<T> configClass) {
+    public <T> void reload(Class<T> configClass) {
         try {
-            Configuration config = configClass.getAnnotation(Configuration.class);
-            if (config == null) {
-                throw new IllegalArgumentException("Class must be annotated with @Configuration");
+            T config = load(configClass);
+            configurations.put(configClass, config);
+
+            // Notify listeners
+            List<Consumer<?>> listeners = reloadListeners.get(configClass);
+            if (listeners != null) {
+                for (Consumer<?> listener : listeners) {
+                    ((Consumer<T>) listener).accept(config);
+                }
             }
-
-            T cached = (T) configCache.get(configClass);
-            if (cached != null) {
-                return cached;
-            }
-
-            File configFile = new File(plugin.getDataFolder(), config.value());
-            T instance = loadConfiguration(configClass, configFile, config.autoUpdate());
-
-            if (instance != null) {
-                configCache.put(configClass, instance);
-            }
-
-            return instance;
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to load configuration: " + configClass.getSimpleName(), e);
-            return null;
+            plugin.getLogger().log(Level.SEVERE, "Failed to reload configuration: " + configClass.getName(), e);
+            throw new ConfigurationException("Failed to reload configuration", e);
         }
     }
 
-    private <T> T loadConfiguration(Class<T> configClass, File file, boolean autoUpdate) throws Exception {
-        T instance;
+    // todo ~ not working.
+    private void scanForConfigurations() {
+        try {
+            String packageName = plugin.getClass().getPackage().getName();
+            File jarFile = new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
 
-        if (!file.exists()) {
-            instance = configClass.getDeclaredConstructor().newInstance();
-            loadCommentsFromClass(configClass);
-            save(instance);
+            try (JarFile jar = new JarFile(jarFile)) {
+                jar.stream()
+                        .filter(entry -> entry.getName().endsWith(".class"))
+                        .filter(entry -> entry.getName().startsWith(packageName.replace('.', '/')))
+                        .forEach(entry -> {
+                            String className = entry.getName()
+                                    .replace('/', '.')
+                                    .substring(0, entry.getName().length() - 6);
+
+                            try {
+                                Class<?> clazz = Class.forName(className);
+                                if (clazz.isAnnotationPresent(Configuration.class)) {
+                                    load(clazz);
+                                }
+                            } catch (Exception e) {
+                                plugin.getLogger().log(Level.WARNING,
+                                        "Failed to load configuration class: " + className, e);
+                            }
+                        });
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to scan for configurations", e);
+        }
+    }
+
+    public <T> T load(Class<T> configClass) throws Exception {
+        Configuration config = configClass.getAnnotation(Configuration.class);
+        if (config == null) {
+            throw new ConfigurationException("Class is not annotated with @Configuration: " + configClass.getName());
+        }
+
+        File configFile = new File(plugin.getDataFolder(), config.value());
+        if (!configFile.exists()) {
+            // Create new configuration
+            T instance = configClass.getDeclaredConstructor().newInstance();
+            saveConfiguration(instance, configFile);
             return instance;
         }
 
-        // Load existing comments before reading the file
-        loadExistingComments(file);
+        // Load existing configuration
+        Map<String, Object> data = loadYamlFile(configFile);
+        T instance = configClass.getDeclaredConstructor().newInstance();
 
-        // Create new instance and load values
-        instance = mapper.readValue(file, configClass);
+        // Update fields
+        for (Field field : configClass.getDeclaredFields()) {
+            field.setAccessible(true);
+            String path = getConfigurationPath(field);
+            Object value = getValueFromPath(data, path);
 
-        if (autoUpdate) {
-            T defaultInstance = configClass.getDeclaredConstructor().newInstance();
-            updateConfiguration(instance, defaultInstance);
+            if (value != null) {
+                setFieldValue(instance, field, value);
+            }
+        }
 
-            // Load comments from class annotations
-            loadCommentsFromClass(configClass);
-
-            save(instance);
+        // If auto-update is enabled, save any new fields
+        if (config.autoUpdate()) {
+            saveConfiguration(instance, configFile);
         }
 
         return instance;
     }
 
-    private void loadCommentsFromClass(Class<?> configClass) {
-        Configuration config = configClass.getAnnotation(Configuration.class);
-        if (config == null) return;
+    private void saveConfiguration(Object config, File file) throws Exception {
+        Map<String, Object> data = new LinkedHashMap<>();
+        Class<?> configClass = config.getClass();
 
-        String fileName = config.value();
-        Map<String, List<String>> comments = pathComments.computeIfAbsent(fileName, k -> new HashMap<>());
-
+        // Collect all configuration data
         for (Field field : configClass.getDeclaredFields()) {
+            field.setAccessible(true);
+            String path = getConfigurationPath(field);
+            Object value = field.get(config);
+
+            if (value != null) {
+                setValueAtPath(data, path, serializeValue(value));
+            }
+
+            // Store comments
             Comment comment = field.getAnnotation(Comment.class);
             if (comment != null) {
-                Path path = field.getAnnotation(Path.class);
-                String key = path != null ? path.value() : field.getName();
-                comments.put(key, Arrays.asList(comment.value()));
+                String fileName = file.getName();
+                configComments.computeIfAbsent(fileName, k -> new HashMap<>())
+                        .put(path, Arrays.asList(comment.value()));
             }
         }
+
+        // Ensure parent directory exists
+        file.getParentFile().mkdirs();
+
+        // Write configuration with comments
+        writeConfigurationFile(file, data);
     }
 
-    private void loadExistingComments(File file) {
-        try {
-            List<String> lines = new ArrayList<>();
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lines.add(line);
+    private void writeConfigurationFile(File file, Map<String, Object> data) throws IOException {
+        List<String> lines = new ArrayList<>();
+        String yamlContent = yaml.dump(data);
+
+        // Split YAML content into lines
+        String[] contentLines = yamlContent.split("\n");
+
+        // Track current path for comment insertion
+        String currentPath = "";
+        int currentIndent = 0;
+
+        for (String line : contentLines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                lines.add("");
+                continue;
             }
-            reader.close();
 
-            String currentPath = "";
-            List<String> currentComments = new ArrayList<>();
-            int indent = 0;
+            // Calculate path and check for comments
+            if (trimmed.contains(":")) {
+                int indent = line.indexOf(trimmed);
+                String key = trimmed.split(":")[0];
 
-            for (String currentLine : lines) {
-                String trimmed = currentLine.trim();
-
-                // Handle comments
-                if (trimmed.startsWith("#")) {
-                    currentComments.add(trimmed.substring(1).trim());
-                    continue;
+                if (indent > currentIndent) {
+                    currentPath = currentPath.isEmpty() ? key : currentPath + "." + key;
+                } else if (indent < currentIndent) {
+                    currentPath = key;
+                } else {
+                    currentPath = currentPath.contains(".") ?
+                            currentPath.substring(0, currentPath.lastIndexOf(".")) + "." + key : key;
                 }
+                currentIndent = indent;
 
-                // Handle key-value pairs
-                if (trimmed.contains(":")) {
-                    String key = trimmed.split(":")[0].trim();
-
-                    // Calculate path based on indentation
-                    if (currentLine.startsWith(" ")) {
-                        int currentIndent = currentLine.indexOf(key);
-                        if (currentIndent > indent) {
-                            currentPath += "." + key;
-                        } else if (currentIndent < indent) {
-                            currentPath = key;
-                        } else {
-                            currentPath = currentPath.substring(0, currentPath.lastIndexOf(".")) + "." + key;
+                // Add comments for this path
+                Map<String, List<String>> fileComments = configComments.get(file.getName());
+                if (fileComments != null) {
+                    List<String> comments = fileComments.get(currentPath);
+                    if (comments != null) {
+                        for (String comment : comments) {
+                            lines.add(" ".repeat(indent) + "# " + comment);
                         }
-                        indent = currentIndent;
-                    } else {
-                        currentPath = key;
-                        indent = 0;
-                    }
-
-                    // Store comments if there are any
-                    if (!currentComments.isEmpty()) {
-                        pathComments.computeIfAbsent(file.getName(), k -> new HashMap<>())
-                                .put(currentPath, new ArrayList<>(currentComments));
-                        currentComments.clear();
                     }
                 }
             }
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to load existing comments", e);
+
+            lines.add(line);
+        }
+
+        // Write the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            for (String line : lines) {
+                writer.write(line);
+                writer.newLine();
+            }
         }
     }
 
-    private void updateConfiguration(Object current, Object defaults) {
+    private Map<String, Object> loadYamlFile(File file) throws IOException {
+        try (FileReader reader = new FileReader(file)) {
+            Object loaded = yaml.load(reader);
+            if (loaded instanceof Map) {
+                return (Map<String, Object>) loaded;
+            }
+            return new HashMap<>();
+        }
+    }
+
+    private String getConfigurationPath(Field field) {
+        Path path = field.getAnnotation(Path.class);
+        return path != null ? path.value() : field.getName();
+    }
+
+    private void setFieldValue(Object instance, Field field, Object value) {
         try {
-            for (Field field : defaults.getClass().getDeclaredFields()) {
-                field.setAccessible(true);
-                if (field.get(current) == null) {
-                    field.set(current, field.get(defaults));
-                }
+            Class<?> fieldType = field.getType();
+            Object convertedValue;
+
+            if (serializerRegistry.hasSerializer(fieldType)) {
+                convertedValue = serializerRegistry.getSerializer(fieldType).deserialize(value);
+            } else {
+                convertedValue = convertValue(value, fieldType);
             }
+
+            field.set(instance, convertedValue);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error updating configuration", e);
-        }
-    }
-
-    public void save(Object config) {
-        try {
-            Configuration annotation = config.getClass().getAnnotation(Configuration.class);
-            if (annotation == null) return;
-
-            File configFile = new File(plugin.getDataFolder(), annotation.value());
-            if (!configFile.getParentFile().exists()) {
-                configFile.getParentFile().mkdirs();
-            }
-
-            // Convert object to YAML
-            String yaml = mapper.writeValueAsString(config);
-            List<String> lines = new ArrayList<>(Arrays.asList(yaml.split("\n")));
-
-            // Insert comments
-            Map<String, List<String>> fileComments = pathComments.get(annotation.value());
-            if (fileComments != null) {
-                insertComments(lines, fileComments);
-            }
-
-            // Write to file
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(configFile))) {
-                for (String line : lines) {
-                    writer.write(line);
-                    writer.newLine();
-                }
-            }
-
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to save configuration: " + config.getClass().getSimpleName(), e);
-        }
-    }
-
-    public void reloadAll() {
-        for (Class<?> configClass : new HashSet<>(configCache.keySet())) {
-            reload(configClass);
+            throw new ConfigurationException("Failed to set field value: " + field.getName(), e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T reload(Class<T> configClass) {
-        configCache.remove(configClass);
-        T config = load(configClass);
+    private Object serializeValue(Object value) {
+        if (value == null) return null;
 
-        List<ReloadListener<?>> listeners = reloadListeners.get(configClass);
-        if (listeners != null) {
-            for (ReloadListener<?> listener : listeners) {
-                ((ReloadListener<T>) listener).onReload(config);
+        Class<?> type = value.getClass();
+        if (serializerRegistry.hasSerializer(type)) {
+            ConfigurationSerializer serializer = serializerRegistry.getSerializer(type);
+            return serializer.serialize(value);
+        }
+        return value;
+    }
+
+    private Object convertValue(Object value, Class<?> targetType) {
+        if (value == null) return null;
+        if (targetType.isInstance(value)) return value;
+
+        // Handle primitive conversions
+        if (targetType == int.class || targetType == Integer.class) {
+            return ((Number) value).intValue();
+        } else if (targetType == long.class || targetType == Long.class) {
+            return ((Number) value).longValue();
+        } else if (targetType == double.class || targetType == Double.class) {
+            return ((Number) value).doubleValue();
+        } else if (targetType == float.class || targetType == Float.class) {
+            return ((Number) value).floatValue();
+        } else if (targetType == boolean.class || targetType == Boolean.class) {
+            return Boolean.valueOf(value.toString());
+        } else if (targetType == String.class) {
+            return value.toString();
+        } else if (targetType.isEnum()) {
+            return Enum.valueOf((Class<? extends Enum>) targetType, value.toString());
+        }
+
+        throw new ConfigurationException("Unsupported type conversion: " + value.getClass() + " to " + targetType);
+    }
+
+    private Object getValueFromPath(Map<String, Object> data, String path) {
+        String[] parts = path.split("\\.");
+        Map<String, Object> current = data;
+
+        for (int i = 0; i < parts.length - 1; i++) {
+            Object obj = current.get(parts[i]);
+            if (!(obj instanceof Map)) {
+                return null;
             }
+            current = (Map<String, Object>) obj;
         }
 
-        return config;
+        return current.get(parts[parts.length - 1]);
     }
 
-    private Map<String, String[]> getConfigComments(Class<?> configClass) {
-        Map<String, String[]> comments = new HashMap<>();
-        for (Field field : configClass.getDeclaredFields()) {
-            Comment comment = field.getAnnotation(Comment.class);
-            if (comment != null) {
-                Path path = field.getAnnotation(Path.class);
-                String key = path != null ? path.value() : field.getName();
-                comments.put(key, comment.value());
-            }
-        }
-        return comments;
-    }
+    private void setValueAtPath(Map<String, Object> data, String path, Object value) {
+        String[] parts = path.split("\\.");
+        Map<String, Object> current = data;
 
-    private void collectComments(List<String> lines, Map<String, String[]> comments) {
-        List<String> currentComments = new ArrayList<>();
-        String currentPath = null;
-
-        for (String line : lines) {
-            if (line.trim().startsWith("#")) {
-                currentComments.add(line.trim().substring(1).trim());
-            } else if (!line.trim().isEmpty()) {
-                if (currentPath != null && !currentComments.isEmpty()) {
-                    comments.put(currentPath, currentComments.toArray(new String[0]));
-                }
-                currentComments.clear();
-                currentPath = extractPath(line);
-            }
-        }
-    }
-
-    private String extractPath(String line) {
-        int colonIndex = line.indexOf(':');
-        if (colonIndex == -1) return null;
-        return line.substring(0, colonIndex).trim();
-    }
-
-    private void insertComments(List<String> lines, Map<String, List<String>> comments) {
-        List<String> result = new ArrayList<>();
-        Map<Integer, String> indentationPaths = new HashMap<>();
-        String currentPath = "";
-        int currentIndent = 0;
-
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            String trimmed = line.trim();
-
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                result.add(line);
-                continue;
-            }
-
-            // Calculate indentation
-            int indent = line.indexOf(trimmed);
-            String key = trimmed.split(":")[0];
-
-            // Update current path based on indentation
-            if (indent > currentIndent) {
-                currentPath = currentPath.isEmpty() ? key : currentPath + "." + key;
-            } else if (indent < currentIndent) {
-                // Go back up the path tree
-                while (indent < currentIndent && !currentPath.isEmpty()) {
-                    currentPath = currentPath.contains(".") ?
-                            currentPath.substring(0, currentPath.lastIndexOf(".")) : "";
-                    currentIndent -= 2;
-                }
-                currentPath = currentPath.isEmpty() ? key : currentPath + "." + key;
-            } else if (indent == currentIndent) {
-                currentPath = currentPath.contains(".") ?
-                        currentPath.substring(0, currentPath.lastIndexOf(".")) + "." + key : key;
-            }
-            currentIndent = indent;
-
-            // Add comments if they exist for this path
-            List<String> pathComments = comments.get(currentPath);
-            if (pathComments != null) {
-                for (String comment : pathComments) {
-                    result.add(" ".repeat(indent) + "# " + comment);
-                }
-            }
-
-            result.add(line);
+        for (int i = 0; i < parts.length - 1; i++) {
+            current = (Map<String, Object>) current.computeIfAbsent(parts[i], k -> new LinkedHashMap<>());
         }
 
-        lines.clear();
-        lines.addAll(result);
-    }
-
-    private abstract static class ItemStackMixin {
-        @JsonCreator
-        public static ItemStack deserialize(@JsonProperty("data") String data) {
-            return ConfigManager.deserializeItemStack(data);
-        }
-
-        @JsonProperty("data")
-        abstract String serialize();
-    }
-
-    private abstract static class LocationMixin {
-        @JsonCreator
-        public static Location create(
-                @JsonProperty("world") String world,
-                @JsonProperty("x") double x,
-                @JsonProperty("y") double y,
-                @JsonProperty("z") double z,
-                @JsonProperty("yaw") float yaw,
-                @JsonProperty("pitch") float pitch) {
-            return new Location(Bukkit.getWorld(world), x, y, z, yaw, pitch);
-        }
-
-        @JsonProperty
-        abstract String getWorld();
-
-        @JsonProperty
-        abstract double getX();
-
-        @JsonProperty
-        abstract double getY();
-
-        @JsonProperty
-        abstract double getZ();
-
-        @JsonProperty
-        abstract float getYaw();
-
-        @JsonProperty
-        abstract float getPitch();
-    }
-
-    private record ReloadListener<T>(Class<T> configClass, @Getter Consumer<T> listener) {
-        public void onReload(T config) {
-            listener.accept(config);
-        }
+        current.put(parts[parts.length - 1], value);
     }
 }

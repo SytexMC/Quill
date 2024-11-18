@@ -11,116 +11,160 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.Delayed;
-import java.util.concurrent.TimeUnit;
 
 @Module
 public class TaskScheduler {
-    private final Map<String, BukkitTask> namedTasks = new ConcurrentHashMap<>();
-    private final Map<BukkitTask, TaskInfo> taskInfo = new ConcurrentHashMap<>();
-    private final DelayQueue<ScheduledTask> scheduledTasks = new DelayQueue<>();
+    private static final int MAX_QUEUE_SIZE = 1000;
+    private final Map<String, ScheduledTask> scheduledTasks = new ConcurrentHashMap<>();
+    private final Set<String> canceledTasks = ConcurrentHashMap.newKeySet();
+    private BukkitTask mainTask;
 
     @Inject
-    private Plugin hostPlugin;
-    private BukkitTask cleanupTask;
+    private Plugin plugin;
+    private volatile boolean isShutdown = false;
 
     @PostConstruct
     public void init() {
-        // Start cleanup task for scheduled tasks
-        cleanupTask = Bukkit.getScheduler().runTaskTimerAsynchronously(hostPlugin, () -> {
-            if (!scheduledTasks.isEmpty()) {
-                ScheduledTask nextTask = scheduledTasks.peek();
-                if (nextTask != null && nextTask.getDelay(TimeUnit.MILLISECONDS) <= 0) {
-                    scheduledTasks.poll();
-
-                    if (Bukkit.isPrimaryThread()) {
-                        nextTask.run();
-                    } else {
-                        Bukkit.getScheduler().runTask(hostPlugin, nextTask::run);
-                    }
-                }
-            }
-        }, 20L, 20L);
+        mainTask = Bukkit.getScheduler().runTaskTimer(plugin, this::processScheduledTasks, 20L, 20L);
     }
 
     @PreDestroy
     public void shutdown() {
-        if (cleanupTask != null) {
-            cleanupTask.cancel();
+        isShutdown = true;
+        if (mainTask != null) {
+            mainTask.cancel();
         }
-
         cancelAllTasks();
-        scheduledTasks.clear();
     }
 
     public void runSync(Runnable runnable) {
         if (Bukkit.isPrimaryThread()) {
             runnable.run();
-            return;
+        } else {
+            Bukkit.getScheduler().runTask(plugin, runnable);
         }
-        Bukkit.getScheduler().runTask(hostPlugin, runnable);
     }
 
     public void runAsync(Runnable runnable) {
         if (!Bukkit.isPrimaryThread()) {
             runnable.run();
-            return;
+        } else {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, runnable);
         }
-        Bukkit.getScheduler().runTaskAsynchronously(hostPlugin, runnable);
     }
 
     public BukkitTask runLater(Runnable runnable, long delayTicks) {
-        return Bukkit.getScheduler().runTaskLater(hostPlugin, runnable, delayTicks);
-    }
-
-    public BukkitTask runTimer(Runnable runnable, long delayTicks, long periodTicks) {
-        return Bukkit.getScheduler().runTaskTimer(hostPlugin, runnable, delayTicks, periodTicks);
+        return Bukkit.getScheduler().runTaskLater(plugin, runnable, delayTicks);
     }
 
     public BukkitTask runLaterAsync(Runnable runnable, long delayTicks) {
-        return Bukkit.getScheduler().runTaskLaterAsynchronously(hostPlugin, runnable, delayTicks);
+        return Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, runnable, delayTicks);
     }
 
-    // Time-based scheduling methods
+    public BukkitTask runTimer(Runnable runnable, long delayTicks, long periodTicks) {
+        return Bukkit.getScheduler().runTaskTimer(plugin, runnable, delayTicks, periodTicks);
+    }
+
+    public BukkitTask runTimerAsync(Runnable runnable, long delayTicks, long periodTicks) {
+        return Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, runnable, delayTicks, periodTicks);
+    }
+
     public void scheduleAt(String name, Runnable task, TimeSchedule schedule) {
+        if (isShutdown) {
+            throw new IllegalStateException("TaskScheduler is shutdown");
+        }
+
+        cancelScheduledTask(name);
         schedule.getNextExecutionTime().ifPresent(time -> {
-            scheduledTasks.offer(new ScheduledTask(name, task, time, schedule));
+            if (scheduledTasks.size() >= MAX_QUEUE_SIZE) {
+                throw new IllegalStateException("Task queue is full");
+            }
+
+            ScheduledTask scheduledTask = new ScheduledTask(name, task, time, schedule);
+            scheduledTasks.put(name, scheduledTask);
+            canceledTasks.remove(name);
         });
     }
 
     public boolean cancelScheduledTask(String name) {
-        return scheduledTasks.removeIf(task -> task.name.equals(name));
+        if (name == null) return false;
+        ScheduledTask task = scheduledTasks.remove(name);
+        if (task != null) {
+            canceledTasks.add(name);
+            return true;
+        }
+        return false;
     }
 
-    /**
-     * Cancels all tasks scheduled by this scheduler
-     */
     public void cancelAllTasks() {
-        namedTasks.values().forEach(BukkitTask::cancel);
-        namedTasks.clear();
-        taskInfo.clear();
+        scheduledTasks.keySet().forEach(this::cancelScheduledTask);
         scheduledTasks.clear();
-        Bukkit.getScheduler().cancelTasks(hostPlugin);
+        canceledTasks.clear();
     }
 
     public Map<String, LocalDateTime> getScheduledTasks() {
         Map<String, LocalDateTime> tasks = new HashMap<>();
-        scheduledTasks.forEach(task -> tasks.put(task.name, task.executionTime));
+        scheduledTasks.forEach((name, task) -> {
+            if (!canceledTasks.contains(name)) {
+                tasks.put(name, task.executionTime);
+            }
+        });
         return Collections.unmodifiableMap(tasks);
     }
 
-    private record TaskInfo(String name, Runnable runnable, long period, long executionTime) {
+    private void processScheduledTasks() {
+        if (isShutdown) return;
+
+        LocalDateTime now = LocalDateTime.now();
+        new ArrayList<>(scheduledTasks.values()).forEach(task -> {
+            if (!canceledTasks.contains(task.name) && !now.isBefore(task.executionTime)) {
+                executeTask(task);
+            }
+        });
+    }
+
+    private void executeTask(ScheduledTask task) {
+        try {
+            task.run();
+
+            if (task.schedule.isRepeating()) {
+                rescheduleTask(task);
+            } else {
+                scheduledTasks.remove(task.name);
+                canceledTasks.remove(task.name);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error executing scheduled task: " + task.name + " - " + e.getMessage());
+            scheduledTasks.remove(task.name);
+            canceledTasks.remove(task.name);
+        }
+    }
+
+    private void rescheduleTask(ScheduledTask task) {
+        task.schedule.getNextExecutionTime().ifPresent(nextTime -> {
+            if (!isShutdown && !canceledTasks.contains(task.name)) {
+                ScheduledTask newTask = new ScheduledTask(task.name, task.task, nextTime, task.schedule);
+                scheduledTasks.put(task.name, newTask);
+            }
+        });
+    }
+
+    private record ScheduledTask(String name, Runnable task, LocalDateTime executionTime, TimeSchedule schedule) {
+        void run() {
+            if (Bukkit.isPrimaryThread()) {
+                task.run();
+            } else {
+                Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("Quill"), task);
+            }
+        }
     }
 
     public static class TimeSchedule {
         private final Set<Integer> hours = new HashSet<>();
         private final Set<Integer> minutes = new HashSet<>();
         private final Set<DayOfWeek> days = new HashSet<>();
-
         @Getter
         private boolean repeating = false;
 
@@ -181,11 +225,9 @@ public class TaskScheduler {
         public Optional<LocalDateTime> getNextExecutionTime() {
             LocalDateTime now = LocalDateTime.now();
 
-            // If no specific times set, default to every hour at 0 minutes
             if (hours.isEmpty()) hours.add(now.getHour());
             if (minutes.isEmpty()) minutes.add(0);
 
-            // If no days specified and not repeating, assume today
             if (days.isEmpty() && !repeating) {
                 days.add(now.getDayOfWeek());
             }
@@ -196,11 +238,10 @@ public class TaskScheduler {
 
         private LocalDateTime findNextTime(LocalDateTime fromTime) {
             LocalDateTime candidate = fromTime;
-            int maxAttempts = 8; // Prevent infinite loops
+            int maxAttempts = 8;
             int attempts = 0;
 
             while (attempts < maxAttempts) {
-                // Check each hour/minute combination for the current day
                 for (int hour : hours) {
                     for (int minute : minutes) {
                         LocalDateTime potential = candidate
@@ -209,59 +250,21 @@ public class TaskScheduler {
                                 .withSecond(0)
                                 .withNano(0);
 
-                        // If time is in the past, try next day
                         if (potential.isBefore(fromTime)) {
                             continue;
                         }
 
-                        // If no days specified or if this day is valid
                         if (days.isEmpty() || days.contains(potential.getDayOfWeek())) {
                             return potential;
                         }
                     }
                 }
 
-                // Move to next day
                 candidate = candidate.plusDays(1);
                 attempts++;
             }
 
             return null;
-        }
-    }
-
-    private class ScheduledTask implements Delayed {
-        private final String name;
-        private final Runnable task;
-        private final LocalDateTime executionTime;
-        private final TimeSchedule schedule;
-
-        ScheduledTask(String name, Runnable task, LocalDateTime executionTime, TimeSchedule schedule) {
-            this.name = name;
-            this.task = task;
-            this.executionTime = executionTime;
-            this.schedule = schedule;
-        }
-
-        @Override
-        public long getDelay(TimeUnit unit) {
-            long delay = LocalDateTime.now().until(executionTime, ChronoUnit.MILLIS);
-            return unit.convert(delay, TimeUnit.MILLISECONDS);
-        }
-
-        @Override
-        public int compareTo(Delayed other) {
-            return Long.compare(getDelay(TimeUnit.MILLISECONDS), other.getDelay(TimeUnit.MILLISECONDS));
-        }
-
-        void run() {
-            runSync(task);
-
-            // If task is repeating, schedule next execution
-            if (schedule.isRepeating()) {
-                schedule.getNextExecutionTime().ifPresent(nextTime ->
-                        scheduledTasks.offer(new ScheduledTask(name, task, nextTime, schedule)));
-            }
         }
     }
 }

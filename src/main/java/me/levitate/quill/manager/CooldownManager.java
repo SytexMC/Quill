@@ -15,7 +15,7 @@ public class CooldownManager {
     public static boolean isOnCooldown(String id, UUID uuid) {
         Map<UUID, Long> cooldownMap = cooldowns.get(id);
         if (cooldownMap == null) return false;
-        
+
         Long cooldownTime = cooldownMap.get(uuid);
         return cooldownTime != null && cooldownTime > System.currentTimeMillis();
     }
@@ -23,10 +23,10 @@ public class CooldownManager {
     public static long getRemainingCooldown(String id, UUID uuid) {
         Map<UUID, Long> cooldownMap = cooldowns.get(id);
         if (cooldownMap == null) return 0;
-        
+
         Long cooldownTime = cooldownMap.get(uuid);
         if (cooldownTime == null) return 0;
-        
+
         long remaining = (cooldownTime - System.currentTimeMillis()) / 1000;
         return Math.max(0, remaining);
     }
@@ -40,8 +40,8 @@ public class CooldownManager {
 
     public static void cleanupExpiredCooldowns() {
         long now = System.currentTimeMillis();
-        cooldowns.values().forEach(map -> 
-            map.entrySet().removeIf(entry -> entry.getValue() <= now)
+        cooldowns.values().forEach(map ->
+                map.entrySet().removeIf(entry -> entry.getValue() <= now)
         );
     }
 }

@@ -2,6 +2,8 @@ package me.levitate.quill.storage;
 
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
+import me.levitate.quill.storage.json.JSONStorageProvider;
+import me.levitate.quill.storage.provider.StorageProvider;
 import me.levitate.quill.storage.serializers.SerializationProvider;
 import org.bukkit.plugin.Plugin;
 
@@ -9,13 +11,11 @@ import java.util.function.Function;
 
 public class StorageBuilder<K, V> {
     private final Plugin plugin;
+    private final SerializationProvider serializationProvider;
+
     private Class<K> keyClass;
     private Class<V> valueClass;
     private String fileName;
-    private String mongoUri;
-    private String databaseName;
-    private String collectionName;
-    private final SerializationProvider serializationProvider;
 
     private StorageBuilder(Plugin plugin) {
         this.plugin = plugin;
@@ -38,21 +38,6 @@ public class StorageBuilder<K, V> {
 
     public StorageBuilder<K, V> fileName(String fileName) {
         this.fileName = fileName;
-        return this;
-    }
-
-    public StorageBuilder<K, V> mongoUri(String mongoUri) {
-        this.mongoUri = mongoUri;
-        return this;
-    }
-
-    public StorageBuilder<K, V> databaseName(String databaseName) {
-        this.databaseName = databaseName;
-        return this;
-    }
-
-    public StorageBuilder<K, V> collectionName(String collectionName) {
-        this.collectionName = collectionName;
         return this;
     }
 
@@ -86,30 +71,17 @@ public class StorageBuilder<K, V> {
         return this;
     }
 
-    public StorageProvider<K, V> buildJson() {
+    public StorageProvider<K, V> build() {
         validateCommonParameters();
         if (fileName == null) {
             throw new IllegalStateException("File name must be specified for JSON storage");
         }
-        return new JsonStorageProvider<>(plugin, keyClass, valueClass, fileName, serializationProvider);
-    }
-
-    public StorageProvider<K, V> buildMongo() {
-        validateCommonParameters();
-        validateMongoParameters();
-        return new MongoStorageProvider<>(plugin, keyClass, valueClass,
-                mongoUri, databaseName, collectionName, serializationProvider);
+        return new JSONStorageProvider<>(plugin, keyClass, valueClass, fileName, serializationProvider);
     }
 
     private void validateCommonParameters() {
         if (keyClass == null || valueClass == null) {
             throw new IllegalStateException("Key and value classes must be specified");
-        }
-    }
-
-    private void validateMongoParameters() {
-        if (mongoUri == null || databaseName == null || collectionName == null) {
-            throw new IllegalStateException("MongoDB connection parameters must be specified");
         }
     }
 }

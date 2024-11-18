@@ -2,17 +2,13 @@ package me.levitate.quill.manager;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.PaperCommandManager;
-import lombok.Getter;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.annotation.PostConstruct;
 import me.levitate.quill.injection.annotation.PreDestroy;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.jar.JarEntry;
@@ -26,11 +22,10 @@ import java.util.stream.Collectors;
  */
 @Module
 public class CommandManager {
+    private final Set<BaseCommand> registeredCommands = new HashSet<>();
     @Inject
     private Plugin plugin;
-
     private PaperCommandManager manager;
-    private final Set<BaseCommand> registeredCommands = new HashSet<>();
 
     @PostConstruct
     public void init() {

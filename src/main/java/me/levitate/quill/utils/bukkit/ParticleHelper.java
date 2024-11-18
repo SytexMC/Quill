@@ -22,7 +22,7 @@ public class ParticleHelper {
     public static void spawnParticleLine(Location start, Location end, Particle particle, double spacing) {
         double distance = start.distance(end);
         Vector direction = end.toVector().subtract(start.toVector()).normalize();
-        
+
         for (double d = 0; d <= distance; d += spacing) {
             Vector vec = direction.clone().multiply(d);
             Location point = start.clone().add(vec);

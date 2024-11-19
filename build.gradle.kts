@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.0.2-beta"
+version = "1.1.0-beta"
 
 repositories {
     mavenCentral()
@@ -34,6 +34,9 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
+
+    // MySQL Storage
+    implementation("com.zaxxer:HikariCP:6.2.1")
 
     // Redis Caching
     implementation("redis.clients:jedis:5.2.0")

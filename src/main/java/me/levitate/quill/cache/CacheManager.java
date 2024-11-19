@@ -1,16 +1,15 @@
 package me.levitate.quill.cache;
 
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.api.StatefulRedisConnection;
+import lombok.Getter;
 import me.levitate.quill.cache.config.RedisConfig;
 import me.levitate.quill.cache.local.LocalCache;
-import me.levitate.quill.cache.redis.CacheCodec;
 import me.levitate.quill.cache.redis.RedisCache;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,10 +19,10 @@ import java.util.function.Supplier;
 @Module
 public class CacheManager {
     private final Map<String, Cache<?, ?>> caches = new ConcurrentHashMap<>();
-    private RedisClient redisClient;
-    private StatefulRedisConnection<String, byte[]> redisConnection;
+    private JedisPool jedisPool;
 
     @Inject
+    @Getter
     private Plugin plugin;
 
     public <K, V> Cache<K, V> createLocalCache(String name) {
@@ -64,41 +63,25 @@ public class CacheManager {
         caches.values().forEach(Cache::close);
         caches.clear();
 
-        if (redisConnection != null) {
-            redisConnection.close();
-        }
-        if (redisClient != null) {
-            redisClient.shutdown();
+        if (jedisPool != null) {
+            jedisPool.close();
         }
     }
 
-    // Internal methods for Redis connection management
-    synchronized RedisClient getRedisClient(RedisConfig config) {
-        if (redisClient == null) {
-            RedisURI redisUri = RedisURI.builder()
-                    .withHost(config.getHost())
-                    .withPort(config.getPort())
-                    .withPassword(config.getPassword().toCharArray())
-                    .withDatabase(config.getDatabase())
-                    .build();
-            redisClient = RedisClient.create(redisUri);
-        }
-        return redisClient;
-    }
+    public synchronized Jedis getJedisConnection(RedisConfig config) {
+        if (jedisPool == null || jedisPool.isClosed()) {
+            JedisPoolConfig poolConfig = new JedisPoolConfig();
+            poolConfig.setMaxTotal(8);
+            poolConfig.setMaxIdle(8);
+            poolConfig.setMinIdle(0);
 
-    public synchronized StatefulRedisConnection<String, byte[]> getRedisConnection(RedisConfig config) {
-        if (redisConnection == null || !redisConnection.isOpen()) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                RedisURI redisUri = RedisURI.builder()
-                        .withHost(config.getHost())
-                        .withPort(config.getPort())
-                        .withPassword(config.getPassword().toCharArray())
-                        .withDatabase(config.getDatabase())
-                        .build();
-                redisClient = RedisClient.create(redisUri);
-                redisConnection = redisClient.connect(CacheCodec.INSTANCE);
-            });
+            jedisPool = new JedisPool(poolConfig,
+                    config.getHost(),
+                    config.getPort(),
+                    2000, // connectionTimeout
+                    config.getPassword().isEmpty() ? null : config.getPassword(),
+                    config.getDatabase());
         }
-        return redisConnection;
+        return jedisPool.getResource();
     }
 }

@@ -1,15 +1,15 @@
 package me.levitate.quill.cache.redis;
 
-import io.lettuce.core.api.async.RedisAsyncCommands;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import me.levitate.quill.cache.Cache;
 import me.levitate.quill.cache.CacheManager;
 import me.levitate.quill.cache.config.RedisConfig;
-import org.bukkit.Bukkit;
+import me.levitate.quill.cache.local.LocalCache;
+import redis.clients.jedis.Jedis;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -17,20 +17,13 @@ public class RedisCache<K, V> implements Cache<K, V> {
     private final RedisConfig redisConfig;
     private final CacheManager cacheManager;
     private final Map<K, V> localCache;
-    private RedisAsyncCommands<String, byte[]> redisCommands;
+    private final ObjectMapper objectMapper;
 
     public RedisCache(RedisConfig redisConfig, CacheManager cacheManager) {
         this.redisConfig = redisConfig;
         this.cacheManager = cacheManager;
         this.localCache = new ConcurrentHashMap<>();
-        this.redisCommands = cacheManager.getRedisConnection(redisConfig).async();
-    }
-
-    private RedisAsyncCommands<String, byte[]> getRedisCommands() {
-        if (redisCommands == null || !redisCommands.isOpen()) {
-            redisCommands = cacheManager.getRedisConnection(redisConfig).async();
-        }
-        return redisCommands;
+        this.objectMapper = new ObjectMapper();
     }
 
     private String getRedisKey(K key) {
@@ -44,18 +37,16 @@ public class RedisCache<K, V> implements Cache<K, V> {
             return Optional.of(localValue);
         }
 
-        try {
-            byte[] value = getRedisCommands().get(getRedisKey(key))
-                    .get(5, TimeUnit.SECONDS);
+        try (Jedis jedis = cacheManager.getJedisConnection(redisConfig)) {
+            String value = jedis.get(getRedisKey(key));
             if (value != null) {
-                V deserializedValue = CacheCodec.deserialize(value);
+                V deserializedValue = objectMapper.readValue(value, objectMapper.constructType(LocalCache.class));
                 localCache.put(key, deserializedValue);
                 return Optional.of(deserializedValue);
             }
         } catch (Exception e) {
-            Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to get value from Redis", e);
+            cacheManager.getPlugin().getLogger().log(Level.WARNING, "Failed to get value from Redis", e);
         }
-
         return Optional.empty();
     }
 
@@ -63,11 +54,11 @@ public class RedisCache<K, V> implements Cache<K, V> {
     public void put(K key, V value) {
         localCache.put(key, value);
         CompletableFuture.runAsync(() -> {
-            try {
-                byte[] serializedValue = CacheCodec.serialize(value);
-                getRedisCommands().set(getRedisKey(key), serializedValue);
+            try (Jedis jedis = cacheManager.getJedisConnection(redisConfig)) {
+                String serializedValue = objectMapper.writeValueAsString(value);
+                jedis.set(getRedisKey(key), serializedValue);
             } catch (Exception e) {
-                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to put value in Redis", e);
+                cacheManager.getPlugin().getLogger().log(Level.WARNING, "Failed to put value in Redis", e);
             }
         });
     }
@@ -89,15 +80,12 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public boolean remove(K key) {
         localCache.remove(key);
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return getRedisCommands().del(getRedisKey(key))
-                        .get(5, TimeUnit.SECONDS) > 0;
-            } catch (Exception e) {
-                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to remove value from Redis", e);
-                return false;
-            }
-        }).join();
+        try (Jedis jedis = cacheManager.getJedisConnection(redisConfig)) {
+            return jedis.del(getRedisKey(key)) > 0;
+        } catch (Exception e) {
+            cacheManager.getPlugin().getLogger().log(Level.WARNING, "Failed to remove value from Redis", e);
+            return false;
+        }
     }
 
     @Override
@@ -109,16 +97,13 @@ public class RedisCache<K, V> implements Cache<K, V> {
     public void clear() {
         localCache.clear();
         CompletableFuture.runAsync(() -> {
-            try {
+            try (Jedis jedis = cacheManager.getJedisConnection(redisConfig)) {
                 String pattern = redisConfig.getKeyPrefix() + "*";
-                List<String> keys = getRedisCommands().keys(pattern)
-                        .get(5, TimeUnit.SECONDS);
-                if (keys != null && !keys.isEmpty()) {
-                    getRedisCommands().del(keys.toArray(new String[0]))
-                            .get(5, TimeUnit.SECONDS);
+                for (String key : jedis.keys(pattern)) {
+                    jedis.del(key);
                 }
             } catch (Exception e) {
-                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to clear Redis cache", e);
+                cacheManager.getPlugin().getLogger().log(Level.WARNING, "Failed to clear Redis cache", e);
             }
         });
     }

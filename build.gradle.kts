@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.0.1-beta"
+version = "1.0.2-beta"
 
 repositories {
     mavenCentral()
@@ -36,7 +36,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
 
     // Redis Caching
-    implementation("io.lettuce:lettuce-core:6.5.0.RELEASE")
+    implementation("redis.clients:jedis:5.2.0")
 
     // Commands
     api("co.aikar:acf-paper:0.5.1-SNAPSHOT")

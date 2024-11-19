@@ -29,11 +29,11 @@ jobs:
           VERSION=$(grep "version = " build.gradle.kts | cut -d'"' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Delete Existing Tag and Release
+      - name: Delete Existing Release and Tag
         run: |
+          # Only delete the v-prefixed version
           git tag -d "v${{ steps.get_version.outputs.version }}" || true
           git push origin ":refs/tags/v${{ steps.get_version.outputs.version }}" || true
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -44,6 +44,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          # Only create the v-prefixed tag
           git tag -a "v${{ steps.get_version.outputs.version }}" -m "Release v${{ steps.get_version.outputs.version }}"
           git push origin "v${{ steps.get_version.outputs.version }}"
 

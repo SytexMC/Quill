@@ -18,9 +18,11 @@ import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.*;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -31,12 +33,15 @@ public class ConfigManager {
     private final Map<Class<?>, Object> configurations = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Consumer<?>>> reloadListeners = new ConcurrentHashMap<>();
     private final Map<String, Map<String, List<String>>> configComments = new ConcurrentHashMap<>();
-    private final SerializerRegistry serializerRegistry;
-    private final Yaml yaml;
+
+    private SerializerRegistry serializerRegistry;
+    private Yaml yaml;
+
     @Inject
     private Plugin plugin;
 
-    public ConfigManager() {
+    @PostConstruct
+    public void init() {
         DumperOptions options = new DumperOptions();
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         options.setPrettyFlow(true);
@@ -48,11 +53,7 @@ public class ConfigManager {
 
         this.yaml = new Yaml(constructor, representer, options);
         this.serializerRegistry = new SerializerRegistry();
-    }
 
-    @PostConstruct
-    public void init() {
-        // Scan for and load all @Configuration classes
         scanForConfigurations();
     }
 
@@ -89,35 +90,63 @@ public class ConfigManager {
         }
     }
 
-    // todo ~ not working.
     private void scanForConfigurations() {
         try {
             String packageName = plugin.getClass().getPackage().getName();
-            File jarFile = new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+            Set<Class<?>> classes = findConfigurationClasses(packageName);
 
-            try (JarFile jar = new JarFile(jarFile)) {
-                jar.stream()
-                        .filter(entry -> entry.getName().endsWith(".class"))
-                        .filter(entry -> entry.getName().startsWith(packageName.replace('.', '/')))
-                        .forEach(entry -> {
-                            String className = entry.getName()
-                                    .replace('/', '.')
-                                    .substring(0, entry.getName().length() - 6);
-
-                            try {
-                                Class<?> clazz = Class.forName(className);
-                                if (clazz.isAnnotationPresent(Configuration.class)) {
-                                    load(clazz);
-                                }
-                            } catch (Exception e) {
-                                plugin.getLogger().log(Level.WARNING,
-                                        "Failed to load configuration class: " + className, e);
-                            }
-                        });
+            for (Class<?> clazz : classes) {
+                try {
+                    plugin.getLogger().info("Found configuration class: " + clazz.getName());
+                    Object config = load(clazz);
+                    configurations.put(clazz, config);
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to load configuration class: " + clazz.getName(), e);
+                }
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to scan for configurations", e);
         }
+    }
+
+    private Set<Class<?>> findConfigurationClasses(String basePackage) {
+        Set<Class<?>> configurations = new HashSet<>();
+        try {
+            // Get the plugin's jar file URL
+            URL jarUrl = plugin.getClass().getProtectionDomain().getCodeSource().getLocation();
+            String jarPath = jarUrl.getPath().replaceFirst("^/(.:/)", "$1"); // Fix Windows paths
+
+            try (JarFile jarFile = new JarFile(new File(jarPath))) {
+                String packagePath = basePackage.replace('.', '/');
+
+                // Enumerate all entries in the JAR
+                Enumeration<JarEntry> entries = jarFile.entries();
+                while (entries.hasMoreElements()) {
+                    JarEntry entry = entries.nextElement();
+                    String entryName = entry.getName();
+
+                    // Check if the entry is a class file in our package
+                    if (entryName.endsWith(".class") && entryName.startsWith(packagePath)) {
+                        // Convert the entry path to a class name
+                        String className = entryName.substring(0, entryName.length() - 6).replace('/', '.');
+
+                        try {
+                            // Load the class and check for @Configuration annotation
+                            Class<?> clazz = Class.forName(className, false, plugin.getClass().getClassLoader());
+                            if (clazz.isAnnotationPresent(Configuration.class)) {
+                                configurations.add(clazz);
+                            }
+                        } catch (Throwable ignored) {
+                            // Skip classes that can't be loaded
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Error scanning for configuration classes", e);
+        }
+
+        return configurations;
     }
 
     public <T> T load(Class<T> configClass) throws Exception {

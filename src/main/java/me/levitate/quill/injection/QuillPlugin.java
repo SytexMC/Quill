@@ -1,10 +1,12 @@
 package me.levitate.quill.injection;
 
+import co.aikar.commands.BaseCommand;
 import lombok.Getter;
 import me.levitate.quill.Quill;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.container.DependencyContainer;
 import me.levitate.quill.injection.exception.DependencyException;
+import me.levitate.quill.manager.CommandManager;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -45,6 +47,9 @@ public abstract class QuillPlugin extends JavaPlugin {
             // Then discover and register other modules
             registerModules();
 
+            // Register all the commands, this is done after to ensure all the modules have loaded.
+            registerCommands(container.getModule(CommandManager.class));
+
             onPluginEnable();
         } catch (Exception e) {
             getLogger().severe("Failed to initialize plugin: " + e.getMessage());
@@ -65,6 +70,19 @@ public abstract class QuillPlugin extends JavaPlugin {
             }
         }
         onPluginDisable();
+    }
+
+    private void registerCommands(CommandManager commandManager) {
+        container.getModules().values().forEach(module -> {
+            if (module instanceof BaseCommand command) {
+                try {
+                    commandManager.registerCommand(command);
+                    getLogger().info("Registered command module: " + command.getClass().getSimpleName());
+                } catch (Exception e) {
+                    getLogger().log(Level.SEVERE, "Failed to register command module: " + command.getClass().getName(), e);
+                }
+            }
+        });
     }
 
     private void registerModules() {

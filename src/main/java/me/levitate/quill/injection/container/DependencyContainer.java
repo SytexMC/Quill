@@ -27,7 +27,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class DependencyContainer {
+    @Getter
     private final Map<Class<?>, Object> modules = new ConcurrentHashMap<>();
+
     private final Map<Class<?>, List<Method>> postConstructMethods = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Method>> preDestroyMethods = new ConcurrentHashMap<>();
 

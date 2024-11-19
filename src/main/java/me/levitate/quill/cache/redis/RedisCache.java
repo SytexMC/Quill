@@ -7,6 +7,7 @@ import me.levitate.quill.cache.config.RedisConfig;
 import org.bukkit.Bukkit;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -16,15 +17,20 @@ public class RedisCache<K, V> implements Cache<K, V> {
     private final RedisConfig redisConfig;
     private final CacheManager cacheManager;
     private final Map<K, V> localCache;
+    private RedisAsyncCommands<String, byte[]> redisCommands;
 
     public RedisCache(RedisConfig redisConfig, CacheManager cacheManager) {
         this.redisConfig = redisConfig;
         this.cacheManager = cacheManager;
         this.localCache = new ConcurrentHashMap<>();
+        this.redisCommands = cacheManager.getRedisConnection(redisConfig).async();
     }
 
     private RedisAsyncCommands<String, byte[]> getRedisCommands() {
-        return cacheManager.getRedisConnection(redisConfig).async();
+        if (redisCommands == null || !redisCommands.isOpen()) {
+            redisCommands = cacheManager.getRedisConnection(redisConfig).async();
+        }
+        return redisCommands;
     }
 
     private String getRedisKey(K key) {
@@ -56,12 +62,14 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public void put(K key, V value) {
         localCache.put(key, value);
-        try {
-            byte[] serializedValue = CacheCodec.serialize(value);
-            getRedisCommands().set(getRedisKey(key), serializedValue);
-        } catch (Exception e) {
-            Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to put value in Redis", e);
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                byte[] serializedValue = CacheCodec.serialize(value);
+                getRedisCommands().set(getRedisKey(key), serializedValue);
+            } catch (Exception e) {
+                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to put value in Redis", e);
+            }
+        });
     }
 
     @Override
@@ -81,13 +89,15 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public boolean remove(K key) {
         localCache.remove(key);
-        try {
-            return getRedisCommands().del(getRedisKey(key))
-                    .get(5, TimeUnit.SECONDS) > 0;
-        } catch (Exception e) {
-            Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to remove value from Redis", e);
-            return false;
-        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return getRedisCommands().del(getRedisKey(key))
+                        .get(5, TimeUnit.SECONDS) > 0;
+            } catch (Exception e) {
+                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to remove value from Redis", e);
+                return false;
+            }
+        }).join();
     }
 
     @Override
@@ -98,17 +108,19 @@ public class RedisCache<K, V> implements Cache<K, V> {
     @Override
     public void clear() {
         localCache.clear();
-        try {
-            String pattern = redisConfig.getKeyPrefix() + "*";
-            List<String> keys = getRedisCommands().keys(pattern)
-                    .get(5, TimeUnit.SECONDS);
-            if (keys != null && !keys.isEmpty()) {
-                getRedisCommands().del(keys.toArray(new String[0]))
+        CompletableFuture.runAsync(() -> {
+            try {
+                String pattern = redisConfig.getKeyPrefix() + "*";
+                List<String> keys = getRedisCommands().keys(pattern)
                         .get(5, TimeUnit.SECONDS);
+                if (keys != null && !keys.isEmpty()) {
+                    getRedisCommands().del(keys.toArray(new String[0]))
+                            .get(5, TimeUnit.SECONDS);
+                }
+            } catch (Exception e) {
+                Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to clear Redis cache", e);
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().log(Level.WARNING, "[Quill] Failed to clear Redis cache", e);
-        }
+        });
     }
 
     @Override

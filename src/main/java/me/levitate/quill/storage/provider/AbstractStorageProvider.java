@@ -11,11 +11,15 @@ import java.util.function.Consumer;
 
 public abstract class AbstractStorageProvider<K, V> implements StorageProvider<K, V> {
     protected final Plugin plugin;
-    protected final Cache<K, V> cache;
     protected final Class<K> keyClass;
     protected final Class<V> valueClass;
+
+    @Getter
+    protected final Cache<K, V> cache;
+
     @Getter
     protected final SerializationProvider serializationProvider;
+
     protected volatile boolean connected;
 
     protected AbstractStorageProvider(Plugin plugin, Class<K> keyClass, Class<V> valueClass,

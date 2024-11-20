@@ -9,6 +9,7 @@ import me.levitate.quill.database.query.QueryBuilder;
 import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -48,22 +49,67 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     private void setupDatabase() {
+        try {
+            // Get the configuration for Hikari.
+            final HikariConfig hikariConfig = getHikariConfig();
+
+            // Create connection pool
+            dataSource = new HikariDataSource(hikariConfig);
+
+            // Test connection
+            try (Connection conn = dataSource.getConnection()) {
+                if (conn.isValid(5)) { // 5 second timeout
+                    isConnected = true;
+                    plugin.getLogger().info("Successfully connected to MySQL database");
+                } else {
+                    throw new SQLException("Failed to validate connection");
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to connect to MySQL database: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to initialize database connection", e);
+        }
+    }
+
+    @NotNull
+    private HikariConfig getHikariConfig() {
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl(String.format("jdbc:mysql://%s:%d/%s",
-                config.getHost(), config.getPort(), config.getDatabase()));
+
+        String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
+                config.getHost(),
+                config.getPort(),
+                config.getDatabase());
+
+        hikariConfig.setJdbcUrl(jdbcUrl);
         hikariConfig.setUsername(config.getUsername());
         hikariConfig.setPassword(config.getPassword());
         hikariConfig.setMaximumPoolSize(config.getPoolSize());
+        hikariConfig.setMinimumIdle(2);
         hikariConfig.setConnectionTimeout(config.getConnectionTimeout());
+        hikariConfig.setIdleTimeout(300000);
+        hikariConfig.setMaxLifetime(600000);
+        hikariConfig.setKeepaliveTime(60000);
 
-        try {
-            dataSource = new HikariDataSource(hikariConfig);
-            isConnected = true;
-            plugin.getLogger().info("Successfully connected to database");
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to connect to database", e);
-            throw new RuntimeException("Failed to connect to database", e);
-        }
+        // Set driver class name explicitly
+        hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+
+        // Connection test query
+        hikariConfig.setConnectionTestQuery("SELECT 1");
+
+        // Optimized Settings
+        hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
+        hikariConfig.addDataSourceProperty("useLocalSessionState", "true");
+        hikariConfig.addDataSourceProperty("rewriteBatchedStatements", "true");
+        hikariConfig.addDataSourceProperty("cacheResultSetMetadata", "true");
+        hikariConfig.addDataSourceProperty("cacheServerConfiguration", "true");
+        hikariConfig.addDataSourceProperty("elideSetAutoCommits", "true");
+        hikariConfig.addDataSourceProperty("maintainTimeStats", "false");
+        hikariConfig.addDataSourceProperty("autoReconnect", "true");
+
+        return hikariConfig;
     }
 
     public QueryBuilder createQuery() {
@@ -74,7 +120,17 @@ public class DatabaseManager implements AutoCloseable {
         if (!isConnected) {
             throw new IllegalStateException("Database is not connected");
         }
-        return dataSource.getConnection();
+
+        try {
+            Connection connection = dataSource.getConnection();
+            if (!connection.isValid(2)) {
+                throw new SQLException("Got invalid connection from pool");
+            }
+            return connection;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to get database connection: " + e.getMessage(), e);
+            throw e;
+        }
     }
 
     public boolean isConnected() {

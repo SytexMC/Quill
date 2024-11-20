@@ -1,5 +1,6 @@
 package me.levitate.quill.storage.provider;
 
+import me.levitate.quill.cache.Cache;
 import me.levitate.quill.storage.serializers.SerializationProvider;
 
 import java.util.Collection;
@@ -47,6 +48,8 @@ public interface StorageProvider<K, V> extends AutoCloseable {
     Set<Map.Entry<K, V>> entrySet();
 
     SerializationProvider getSerializationProvider();
+
+    Cache<K, V> getCache();
 
     boolean isConnected();
 

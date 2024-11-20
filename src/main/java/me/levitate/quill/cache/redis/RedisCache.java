@@ -132,4 +132,9 @@ public class RedisCache<K, V> implements Cache<K, V> {
     public void close() {
         clear();
     }
+
+    @Override
+    public Map<K, V> getMap() {
+        return this.localCache;
+    }
 }

@@ -1,5 +1,6 @@
 package me.levitate.quill.cache.local;
 
+import lombok.Getter;
 import me.levitate.quill.cache.Cache;
 
 import java.util.*;
@@ -71,5 +72,10 @@ public class LocalCache<K, V> implements Cache<K, V> {
     @Override
     public void close() {
         clear();
+    }
+
+    @Override
+    public Map<K, V> getMap() {
+        return this.cache;
     }
 }

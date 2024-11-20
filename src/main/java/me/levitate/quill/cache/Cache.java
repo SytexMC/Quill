@@ -82,4 +82,9 @@ public interface Cache<K, V> {
      * Close cache and free resources
      */
     void close();
+
+    /**
+     * Get the cache map
+     */
+    Map<K, V> getMap();
 }

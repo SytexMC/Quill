@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.1.4-beta"
+version = "1.1.5-beta"
 
 repositories {
     mavenCentral()

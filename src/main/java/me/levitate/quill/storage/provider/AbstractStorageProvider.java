@@ -108,12 +108,6 @@ public abstract class AbstractStorageProvider<K, V> implements StorageProvider<K
         return connected;
     }
 
-    protected void ensureConnected() {
-        if (!connected) {
-            throw new IllegalStateException("Storage provider is not connected");
-        }
-    }
-
     @Override
     public void close() throws Exception {
         cache.close();

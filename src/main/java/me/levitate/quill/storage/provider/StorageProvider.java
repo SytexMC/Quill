@@ -17,11 +17,7 @@ public interface StorageProvider<K, V> extends AutoCloseable {
 
     void save() throws Exception;
 
-    void saveKey(K key) throws Exception;
-
     void load() throws Exception;
-
-    void loadKey(K key) throws Exception;
 
     Optional<V> get(K key);
 
@@ -52,10 +48,6 @@ public interface StorageProvider<K, V> extends AutoCloseable {
     Cache<K, V> getCache();
 
     boolean isConnected();
-
-    CompletableFuture<Void> loadKeyAsync(K key);
-
-    CompletableFuture<Void> saveKeyAsync(K key);
 
     CompletableFuture<Void> saveAsync();
 

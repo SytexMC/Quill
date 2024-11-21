@@ -9,186 +9,149 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 
 public class JSONStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
     private final ObjectMapper mapper;
-    private final File file;
-    private final Object fileLock = new Object();
+    private final File storageFile;
+    private final ReentrantReadWriteLock fileLock = new ReentrantReadWriteLock();
+    private final File backupFile;
 
     public JSONStorageProvider(Plugin plugin, Class<K> keyClass, Class<V> valueClass,
                                String fileName, SerializationProvider serializationProvider) {
         super(plugin, keyClass, valueClass, serializationProvider);
-        final String finalFileName = fileName + (fileName.endsWith(".json") ? "" : ".json");
         this.mapper = new ObjectMapper()
-                .enable(SerializationFeature.INDENT_OUTPUT);
+                .enable(SerializationFeature.INDENT_OUTPUT)
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+
         serializationProvider.configureMapper(this.mapper);
-        this.file = new File(plugin.getDataFolder(), finalFileName);
+
+        String finalFileName = fileName.endsWith(".json") ? fileName : fileName + ".json";
+        this.storageFile = new File(plugin.getDataFolder(), finalFileName);
+        this.backupFile = new File(plugin.getDataFolder(), finalFileName + ".backup");
+
+        connect();
+    }
+
+    @Override
+    public void connect() {
+        if (isConnected()) {
+            plugin.getLogger().warning("The storage is already connected.");
+            return;
+        }
 
         try {
-            connect();
+            if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
+                plugin.getLogger().severe("Failed to create plugin data folder");
+                return;
+            }
+            connected = true;
+            load();
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Unable to connect to JSON storage.", e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to connect to storage", e);
         }
     }
 
     @Override
-    public void connect() throws Exception {
-        if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
-            throw new Exception("Failed to create data folder");
+    public void disconnect() {
+        try {
+            save();
+            cache.clear();
+            connected = false;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Error during storage disconnect", e);
         }
-        connected = true;
-        load();
     }
 
-    @Override
-    public void disconnect() throws Exception {
-        save();
-        cache.clear();
-        connected = false;
-    }
+    public void save() {
+        if (!connected) {
+            plugin.getLogger().warning("Attempted to save while storage is not connected");
+            return;
+        }
 
-    @Override
-    public void save() throws Exception {
-        synchronized (fileLock) {
+        fileLock.writeLock().lock();
+        try {
+            // Create backup of existing file
+            if (storageFile.exists()) {
+                Files.copy(storageFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // Prepare data
             Map<K, V> saveMap = new HashMap<>();
             for (K key : cache.keys()) {
                 cache.get(key).ifPresent(value -> saveMap.put(key, value));
             }
 
-            File tempFile = new File(file.getParentFile(), file.getName() + ".tmp");
-            mapper.writeValue(tempFile, saveMap);
+            // Write to file
+            mapper.writeValue(storageFile, saveMap);
 
-            if (file.exists() && !file.delete()) {
-                throw new Exception("Failed to delete existing file during save");
+            // Clean up backup
+            if (backupFile.exists()) {
+                Files.delete(backupFile.toPath());
             }
-            if (!tempFile.renameTo(file)) {
-                throw new Exception("Failed to rename temporary file during save");
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to save data", e);
+            // Attempt to restore backup
+            try {
+                if (backupFile.exists()) {
+                    Files.copy(backupFile.toPath(), storageFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (Exception restoreException) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to restore backup after save failure", restoreException);
             }
+        } finally {
+            fileLock.writeLock().unlock();
         }
     }
 
-    @Override
-    public void load() throws Exception {
-        synchronized (fileLock) {
-            if (!file.exists()) return;
+    public void load() {
+        if (!connected) {
+            plugin.getLogger().warning("Attempted to load while storage is not connected");
+            return;
+        }
+
+        fileLock.readLock().lock();
+        try {
+            if (!storageFile.exists()) {
+                if (backupFile.exists()) {
+                    Files.copy(backupFile.toPath(), storageFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    return; // No data to load
+                }
+            }
 
             JavaType mapType = mapper.getTypeFactory().constructMapType(Map.class, keyClass, valueClass);
-            Map<K, V> loadedData = mapper.readValue(file, mapType);
+            Map<K, V> loadedData = mapper.readValue(storageFile, mapType);
 
             cache.clear();
             if (loadedData != null) {
                 loadedData.forEach(cache::put);
             }
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to load data", e);
+        } finally {
+            fileLock.readLock().unlock();
         }
     }
 
     @Override
-    public void saveKey(K key) throws Exception {
-        synchronized (fileLock) {
-            Map<K, V> saveMap = new HashMap<>();
-
-            if (file.exists()) {
-                JavaType mapType = mapper.getTypeFactory().constructMapType(Map.class, keyClass, valueClass);
-                Map<K, V> existingData = mapper.readValue(file, mapType);
-                if (existingData != null) {
-                    saveMap.putAll(existingData);
-                }
-            }
-
-            cache.get(key).ifPresent(value -> saveMap.put(key, value));
-
-            File tempFile = new File(file.getParentFile(), file.getName() + ".tmp");
-            mapper.writeValue(tempFile, saveMap);
-
-            if (file.exists() && !file.delete()) {
-                throw new Exception("Failed to delete existing file during save");
-            }
-            if (!tempFile.renameTo(file)) {
-                throw new Exception("Failed to rename temporary file during save");
-            }
+    public boolean remove(K key) {
+        if (!connected) {
+            plugin.getLogger().warning("Attempted to remove key while storage is not connected");
+            return false;
         }
-    }
 
-    @Override
-    public void loadKey(K key) throws Exception {
-        synchronized (fileLock) {
-            if (!file.exists()) return;
-
-            JavaType mapType = mapper.getTypeFactory().constructMapType(Map.class, keyClass, valueClass);
-            Map<K, V> loadedData = mapper.readValue(file, mapType);
-
-            if (loadedData != null && loadedData.containsKey(key)) {
-                cache.put(key, loadedData.get(key));
-            }
+        boolean removed = cache.remove(key);
+        if (removed) {
+            save();
         }
-    }
-
-    @Override
-    public CompletableFuture<Void> loadKeyAsync(K key) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                loadKey(key);
-                runSync(() -> future.complete(null));
-            } catch (Exception e) {
-                runSync(() -> future.completeExceptionally(e));
-            }
-        });
-
-        return future;
-    }
-
-    @Override
-    public CompletableFuture<Void> saveKeyAsync(K key) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                saveKey(key);
-                runSync(() -> future.complete(null));
-            } catch (Exception e) {
-                runSync(() -> future.completeExceptionally(e));
-            }
-        });
-
-        return future;
-    }
-
-    @Override
-    public CompletableFuture<Void> saveAsync() {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                save();
-                runSync(() -> future.complete(null));
-            } catch (Exception e) {
-                runSync(() -> future.completeExceptionally(e));
-            }
-        });
-
-        return future;
-    }
-
-    @Override
-    public CompletableFuture<Void> loadAsync() {
-        CompletableFuture<Void> future = new CompletableFuture<>();
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                load();
-                runSync(() -> future.complete(null));
-            } catch (Exception e) {
-                runSync(() -> future.completeExceptionally(e));
-            }
-        });
-
-        return future;
+        return removed;
     }
 
     private void runSync(Runnable runnable) {
@@ -199,39 +162,25 @@ public class JSONStorageProvider<K, V> extends AbstractStorageProvider<K, V> {
         }
     }
 
-    @Override
-    public boolean remove(K key) {
-        boolean removed = cache.remove(key);
-        if (removed) {
-            try {
-                synchronized (fileLock) {
-                    Map<K, V> saveMap = new HashMap<>();
+    public CompletableFuture<Void> saveAsync() {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
-                    if (file.exists()) {
-                        JavaType mapType = mapper.getTypeFactory().constructMapType(Map.class, keyClass, valueClass);
-                        Map<K, V> existingData = mapper.readValue(file, mapType);
-                        if (existingData != null) {
-                            saveMap.putAll(existingData);
-                        }
-                    }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            save();
+            runSync(() -> future.complete(null));
+        });
 
-                    saveMap.remove(key);
+        return future;
+    }
 
-                    File tempFile = new File(file.getParentFile(), file.getName() + ".tmp");
-                    mapper.writeValue(tempFile, saveMap);
+    public CompletableFuture<Void> loadAsync() {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
-                    if (file.exists() && !file.delete()) {
-                        throw new Exception("Failed to delete existing file during save");
-                    }
-                    if (!tempFile.renameTo(file)) {
-                        throw new Exception("Failed to rename temporary file during save");
-                    }
-                }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to remove key from storage: " + key, e);
-                return false;
-            }
-        }
-        return removed;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            load();
+            runSync(() -> future.complete(null));
+        });
+
+        return future;
     }
 }

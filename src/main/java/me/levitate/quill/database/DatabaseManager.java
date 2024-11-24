@@ -17,6 +17,8 @@ import java.util.logging.Level;
 
 @Module
 public class DatabaseManager implements AutoCloseable {
+    private static final String MYSQL_DRIVER = "me.levitate.mysql.cj.jdbc.Driver";
+
     private HikariDataSource dataSource;
     private Cache<String, Object> cache;
     private boolean isConnected;
@@ -31,6 +33,14 @@ public class DatabaseManager implements AutoCloseable {
     public void connect(DatabaseConfig config) {
         if (isConnected) {
             throw new IllegalStateException("Database is already connected");
+        }
+
+        try {
+            // Load the MySQL driver explicitly
+            Class.forName(MYSQL_DRIVER);
+        } catch (ClassNotFoundException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to load MySQL driver", e);
+            throw new RuntimeException("MySQL driver not found", e);
         }
 
         this.config = config;
@@ -90,8 +100,8 @@ public class DatabaseManager implements AutoCloseable {
         hikariConfig.setMaxLifetime(600000); // 10 minutes
         hikariConfig.setKeepaliveTime(60000); // 1 minute
 
-        // Set driver class name explicitly
-        hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        // Set driver class name explicitly with relocated package
+        hikariConfig.setDriverClassName(MYSQL_DRIVER);
 
         // Connection test query
         hikariConfig.setConnectionTestQuery("SELECT 1");

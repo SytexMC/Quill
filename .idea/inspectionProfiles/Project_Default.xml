@@ -13,6 +13,8 @@
           <option value="Quill" />
           <option value="Quill" />
           <option value="Quill" />
+          <option value="Quill" />
+          <option value="Quill" />
         </list>
       </option>
       <option name="ignoredPackages">
@@ -20,10 +22,14 @@
           <option value="junit:junit:4.10" />
           <option value="com.google.code.gson:gson:2.8.0" />
           <option value="io.netty:netty-common:4.1.113.Final" />
+          <option value="com.google.protobuf:protobuf-java:3.21.9" />
+          <option value="com.mysql:mysql-connector-j:8.0.33" />
         </list>
       </option>
       <option name="ignoredReasons">
         <list>
+          <option value="Not exploitable" />
+          <option value="Not exploitable" />
           <option value="Not exploitable" />
           <option value="Not exploitable" />
           <option value="Not exploitable" />

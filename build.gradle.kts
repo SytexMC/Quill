@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.1.6-beta"
+version = "1.1.7-beta"
 
 repositories {
     mavenCentral()
@@ -36,7 +36,8 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
 
     // MySQL Storage
-    implementation("com.zaxxer:HikariCP:6.2.1")
+    api("com.zaxxer:HikariCP:6.2.1")
+    api("mysql:mysql-connector-java:8.0.33")
 
     // Redis Caching
     implementation("redis.clients:jedis:5.2.0")
@@ -86,6 +87,8 @@ tasks {
         relocate("co.aikar.locales", "me.levitate.locales")
         relocate("dev.triumphteam.gui", "me.levitate.gui")
         relocate("com.fasterxml.jackson", "me.levitate.jackson")
+        relocate("com.mysql", "me.levitate.mysql")
+        relocate("com.zaxxer.hikari", "me.levitate.hikari")
 
         archiveClassifier.set("")
         minimize()

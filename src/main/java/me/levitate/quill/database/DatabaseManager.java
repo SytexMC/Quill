@@ -75,7 +75,7 @@ public class DatabaseManager implements AutoCloseable {
     private HikariConfig getHikariConfig() {
         HikariConfig hikariConfig = new HikariConfig();
 
-        String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true",
+        String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&characterEncoding=utf8",
                 config.getHost(),
                 config.getPort(),
                 config.getDatabase());
@@ -86,9 +86,9 @@ public class DatabaseManager implements AutoCloseable {
         hikariConfig.setMaximumPoolSize(config.getPoolSize());
         hikariConfig.setMinimumIdle(2);
         hikariConfig.setConnectionTimeout(config.getConnectionTimeout());
-        hikariConfig.setIdleTimeout(300000);
-        hikariConfig.setMaxLifetime(600000);
-        hikariConfig.setKeepaliveTime(60000);
+        hikariConfig.setIdleTimeout(300000); // 5 minutes
+        hikariConfig.setMaxLifetime(600000); // 10 minutes
+        hikariConfig.setKeepaliveTime(60000); // 1 minute
 
         // Set driver class name explicitly
         hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
@@ -108,6 +108,9 @@ public class DatabaseManager implements AutoCloseable {
         hikariConfig.addDataSourceProperty("elideSetAutoCommits", "true");
         hikariConfig.addDataSourceProperty("maintainTimeStats", "false");
         hikariConfig.addDataSourceProperty("autoReconnect", "true");
+
+        // Add connection initialization query
+        hikariConfig.setConnectionInitSql("SET NAMES utf8mb4");
 
         return hikariConfig;
     }

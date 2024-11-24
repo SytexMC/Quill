@@ -109,7 +109,7 @@ public abstract class AbstractStorageProvider<K, V> implements StorageProvider<K
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         cache.close();
         connected = false;
     }

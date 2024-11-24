@@ -11,13 +11,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public interface StorageProvider<K, V> extends AutoCloseable {
-    void connect() throws Exception;
+    void connect();
 
-    void disconnect() throws Exception;
+    void disconnect();
 
-    void save() throws Exception;
+    void save();
 
-    void load() throws Exception;
+    void load();
 
     Optional<V> get(K key);
 
@@ -54,7 +54,7 @@ public interface StorageProvider<K, V> extends AutoCloseable {
     CompletableFuture<Void> loadAsync();
 
     @Override
-    default void close() throws Exception {
+    default void close() {
         disconnect();
     }
 }

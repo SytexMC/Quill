@@ -30,10 +30,8 @@ import java.util.logging.Logger;
 public class DependencyContainer {
     @Getter
     private final Map<Class<?>, Object> modules = new ConcurrentHashMap<>();
-
     private final Map<Class<?>, List<Method>> postConstructMethods = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Method>> preDestroyMethods = new ConcurrentHashMap<>();
-
     @Getter
     private final Plugin hostPlugin;
 
@@ -78,14 +76,36 @@ public class DependencyContainer {
             // Regular module registration
             Object instance = createInstance(moduleClass);
 
-            injectDependencies(instance);
+            try {
+                injectDependencies(instance);
+            } catch (Exception e) {
+                throw new DependencyException("Failed to inject dependencies for module: " +
+                        moduleClass.getName() + " - " + e.getMessage(), e);
+            }
+
             modules.put(moduleClass, instance);
-            scanLifecycleMethods(moduleClass);
-            invokePostConstruct(instance);
+
+            try {
+                scanLifecycleMethods(moduleClass);
+            } catch (Exception e) {
+                throw new DependencyException("Failed to scan lifecycle methods for module: " +
+                        moduleClass.getName() + " - " + e.getMessage(), e);
+            }
+
+            try {
+                invokePostConstruct(instance);
+            } catch (Exception e) {
+                // Remove the module if initialization fails
+                modules.remove(moduleClass);
+                throw e; // Re-throw to be caught by outer try-catch
+            }
 
             logger.fine("Successfully registered module: " + moduleClass.getName());
         } catch (Exception e) {
-            throw new DependencyException("Failed to register module: " + moduleClass.getName(), e);
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            String errorMessage = "Failed to register module " + moduleClass.getName() + ": " + cause.getMessage();
+            logger.log(Level.SEVERE, errorMessage, cause);
+            throw new DependencyException(errorMessage, cause);
         }
     }
 
@@ -269,8 +289,14 @@ public class DependencyContainer {
                     method.setAccessible(true);
                     method.invoke(instance);
                 } catch (Exception e) {
-                    throw new DependencyException("Failed to invoke @PostConstruct method: " +
-                            method.getDeclaringClass().getName() + "#" + method.getName(), e);
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    String errorMessage = String.format("Failed to initialize module: %s#%s - %s",
+                            instance.getClass().getName(),
+                            method.getName(),
+                            cause.getMessage()
+                    );
+                    logger.log(Level.SEVERE, errorMessage, cause);
+                    throw new DependencyException(errorMessage, cause);
                 }
             }
         }
@@ -284,9 +310,13 @@ public class DependencyContainer {
                     method.setAccessible(true);
                     method.invoke(instance);
                 } catch (Exception e) {
-                    logger.warning("Failed to invoke @PreDestroy method: " +
-                            method.getDeclaringClass().getName() + "#" + method.getName() +
-                            " - " + e.getMessage());
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    String errorMessage = String.format("Failed to cleanup module: %s#%s - %s",
+                            instance.getClass().getName(),
+                            method.getName(),
+                            cause.getMessage()
+                    );
+                    logger.log(Level.SEVERE, errorMessage, cause);
                 }
             }
         }

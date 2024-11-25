@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 @Module
+@Deprecated(since = "v1.1.11-beta", forRemoval = true)
 public class ConfigManager {
     private static final Pattern COMMENT_PATTERN = Pattern.compile("^\\s*#.*$");
     private final Map<Class<?>, Object> configurations = new ConcurrentHashMap<>();

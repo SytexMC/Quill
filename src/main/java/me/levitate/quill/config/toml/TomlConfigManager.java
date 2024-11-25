@@ -15,16 +15,21 @@ import me.levitate.quill.injection.annotation.Inject;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.annotation.PostConstruct;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Level;
 
 @Module
+@SuppressWarnings("unused")
 public class TomlConfigManager {
     private final Map<Class<?>, Object> configurations = new ConcurrentHashMap<>();
     private final Map<Class<?>, List<Consumer<?>>> reloadListeners = new ConcurrentHashMap<>();
@@ -88,16 +93,33 @@ public class TomlConfigManager {
     private Set<Class<?>> findConfigurationClasses(String basePackage) {
         Set<Class<?>> configs = new HashSet<>();
         try {
-            ClassLoader classLoader = plugin.getClass().getClassLoader();
-            String path = basePackage.replace('.', '/');
-            Enumeration<URL> resources = classLoader.getResources(path);
+            // Get the plugin's jar file
+            Method getFileMethod = JavaPlugin.class.getDeclaredMethod("getFile");
+            getFileMethod.setAccessible(true);
+            File pluginFile = (File) getFileMethod.invoke(plugin);
 
-            while (resources.hasMoreElements()) {
-                URL resource = resources.nextElement();
-                File directory = new File(resource.getFile());
+            if (pluginFile.isFile()) { // Ensure it's a jar file
+                try (JarFile jarFile = new JarFile(pluginFile)) {
+                    String packagePath = basePackage.replace('.', '/');
+                    Enumeration<JarEntry> entries = jarFile.entries();
 
-                if (directory.exists()) {
-                    findConfigClasses(basePackage, directory, configs);
+                    while (entries.hasMoreElements()) {
+                        JarEntry entry = entries.nextElement();
+                        String name = entry.getName();
+
+                        // Check if it's a class file in or under our package
+                        if (name.endsWith(".class") && name.startsWith(packagePath)) {
+                            String className = name.substring(0, name.length() - 6).replace('/', '.');
+                            try {
+                                Class<?> clazz = Class.forName(className, false, plugin.getClass().getClassLoader());
+                                if (clazz.isAnnotationPresent(TomlConfig.class)) {
+                                    configs.add(clazz);
+                                }
+                            } catch (Throwable ignored) {
+                                // Skip classes that can't be loaded
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception e) {

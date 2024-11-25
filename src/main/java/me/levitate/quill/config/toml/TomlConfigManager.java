@@ -37,19 +37,32 @@ public class TomlConfigManager {
     @Inject
     private Plugin plugin;
 
-    @PostConstruct
-    public void init() {
-        scanForConfigurations();
-    }
-
     public <T> void addReloadListener(Class<T> configClass, Consumer<T> listener) {
         reloadListeners.computeIfAbsent(configClass, k -> new ArrayList<>()).add(listener);
     }
 
     @SuppressWarnings("unchecked")
     public <T> T getConfig(Class<T> configClass) {
-        return (T) Optional.ofNullable(configurations.get(configClass))
-                .orElseThrow(() -> new ConfigurationException("Configuration not loaded: " + configClass.getName()));
+        // First check if already loaded
+        T config = (T) configurations.get(configClass);
+        if (config != null) {
+            return config;
+        }
+
+        // Verify class has TomlConfig annotation
+        TomlConfig annotation = configClass.getAnnotation(TomlConfig.class);
+        if (annotation == null) {
+            throw new ConfigurationException("Class is not annotated with @TomlConfig: " + configClass.getName());
+        }
+
+        // Load the configuration
+        try {
+            config = load(configClass);
+            configurations.put(configClass, config);
+            return config;
+        } catch (Exception e) {
+            throw new ConfigurationException("Failed to load configuration: " + configClass.getName(), e);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -68,84 +81,6 @@ public class TomlConfigManager {
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to reload configuration: " + configClass.getName(), e);
             throw new ConfigurationException("Failed to reload configuration", e);
-        }
-    }
-
-    private void scanForConfigurations() {
-        try {
-            String packageName = plugin.getClass().getPackage().getName();
-            Set<Class<?>> classes = findConfigurationClasses(packageName);
-
-            for (Class<?> clazz : classes) {
-                try {
-                    plugin.getLogger().info("Found configuration class: " + clazz.getName());
-                    Object config = load(clazz);
-                    configurations.put(clazz, config);
-                } catch (Exception e) {
-                    plugin.getLogger().log(Level.SEVERE, "Failed to load configuration class: " + clazz.getName(), e);
-                }
-            }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to scan for configurations", e);
-        }
-    }
-
-    private Set<Class<?>> findConfigurationClasses(String basePackage) {
-        Set<Class<?>> configs = new HashSet<>();
-        try {
-            // Get the plugin's jar file
-            Method getFileMethod = JavaPlugin.class.getDeclaredMethod("getFile");
-            getFileMethod.setAccessible(true);
-            File pluginFile = (File) getFileMethod.invoke(plugin);
-
-            if (pluginFile.isFile()) { // Ensure it's a jar file
-                try (JarFile jarFile = new JarFile(pluginFile)) {
-                    String packagePath = basePackage.replace('.', '/');
-                    Enumeration<JarEntry> entries = jarFile.entries();
-
-                    while (entries.hasMoreElements()) {
-                        JarEntry entry = entries.nextElement();
-                        String name = entry.getName();
-
-                        // Check if it's a class file in or under our package
-                        if (name.endsWith(".class") && name.startsWith(packagePath)) {
-                            String className = name.substring(0, name.length() - 6).replace('/', '.');
-                            try {
-                                Class<?> clazz = Class.forName(className, false, plugin.getClass().getClassLoader());
-                                if (clazz.isAnnotationPresent(TomlConfig.class)) {
-                                    configs.add(clazz);
-                                }
-                            } catch (Throwable ignored) {
-                                // Skip classes that can't be loaded
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error scanning for configuration classes", e);
-        }
-        return configs;
-    }
-
-    private void findConfigClasses(String basePackage, File directory, Set<Class<?>> configs) {
-        File[] files = directory.listFiles();
-        if (files == null) return;
-
-        for (File file : files) {
-            String fileName = file.getName();
-            if (file.isDirectory()) {
-                findConfigClasses(basePackage + "." + fileName, file, configs);
-            } else if (fileName.endsWith(".class")) {
-                String className = basePackage + '.' + fileName.substring(0, fileName.length() - 6);
-                try {
-                    Class<?> clazz = Class.forName(className);
-                    if (clazz.isAnnotationPresent(TomlConfig.class)) {
-                        configs.add(clazz);
-                    }
-                } catch (ClassNotFoundException ignored) {
-                }
-            }
         }
     }
 

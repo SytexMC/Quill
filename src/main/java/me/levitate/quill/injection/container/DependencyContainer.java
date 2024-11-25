@@ -3,6 +3,7 @@ package me.levitate.quill.injection.container;
 import lombok.Getter;
 import me.levitate.quill.cache.CacheManager;
 import me.levitate.quill.config.ConfigManager;
+import me.levitate.quill.config.toml.TomlConfigManager;
 import me.levitate.quill.event.EventManager;
 import me.levitate.quill.hook.HookManager;
 import me.levitate.quill.injection.annotation.Inject;
@@ -54,6 +55,7 @@ public class DependencyContainer {
         try {
             registerModule(CacheManager.class);
             registerModule(ConfigManager.class);
+            registerModule(TomlConfigManager.class);
             registerModule(HookManager.class);
             registerModule(TaskScheduler.class);
             registerModule(EventManager.class);

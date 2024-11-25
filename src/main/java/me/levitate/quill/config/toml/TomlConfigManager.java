@@ -1,14 +1,14 @@
 package me.levitate.quill.config.toml;
 
-import com.electronwill.nightconfig.core.conversion.ObjectConverter;
-import com.electronwill.nightconfig.core.conversion.Path;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.core.file.FileNotFoundAction;
 import com.electronwill.nightconfig.core.io.ParsingException;
 import com.electronwill.nightconfig.core.io.ParsingMode;
+import com.electronwill.nightconfig.core.serde.ObjectDeserializer;
+import com.electronwill.nightconfig.core.serde.ObjectSerializer;
 import me.levitate.quill.config.annotation.Comment;
 import me.levitate.quill.config.exception.ConfigurationException;
-import me.levitate.quill.config.toml.annotation.Nullable;
+import me.levitate.quill.config.toml.annotation.Path;
 import me.levitate.quill.config.toml.annotation.TomlConfig;
 import me.levitate.quill.config.toml.exception.ConfigValidationException;
 import me.levitate.quill.injection.annotation.Inject;
@@ -154,11 +154,8 @@ public class TomlConfigManager {
 
                 fileConfig.load();
 
-                // Create a new ObjectConverter for this specific configuration
-                ObjectConverter converter = new ObjectConverter();
-
                 // Convert the loaded TOML data to our configuration class
-                converter.toObject(fileConfig, instance);
+                ObjectDeserializer.standard().deserializeFields(fileConfig, instance);
 
                 // If auto-update is enabled, check for new fields and save
                 if (config.autoUpdate()) {
@@ -174,6 +171,7 @@ public class TomlConfigManager {
         }
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     private void save(Object config, File file) {
         try {
             file.getParentFile().mkdirs();
@@ -181,14 +179,11 @@ public class TomlConfigManager {
             try (CommentedFileConfig commentedConfig = CommentedFileConfig.builder(file)
                     .sync()
                     .preserveInsertionOrder()
-                    .parsingMode(ParsingMode.REPLACE) // Add this line
+                    .parsingMode(ParsingMode.REPLACE)
                     .build()) {
 
                 // Convert object to TOML
-                new ObjectConverter().toConfig(config, commentedConfig);
-
-                // Process comments for all fields including nested objects
-                processComments(config.getClass(), commentedConfig);
+                ObjectSerializer.standard().serializeFields(config, commentedConfig);
 
                 // Save the file
                 commentedConfig.save();
@@ -206,50 +201,18 @@ public class TomlConfigManager {
                 Object value = field.get(config);
 
                 // Check for null values on non-nullable fields
-                if (value == null && !field.isAnnotationPresent(Nullable.class)) {
+                if (value == null) {
                     throw new ConfigValidationException("Field " + field.getName() + " cannot be null");
                 }
 
                 // Validate nested objects
-                if (value != null &&
-                        !field.getType().isPrimitive() &&
+                if (!field.getType().isPrimitive() &&
                         !field.getType().getName().startsWith("java.lang.") &&
                         !field.getType().isEnum()) {
                     validateConfig(value);
                 }
             } catch (IllegalAccessException e) {
                 throw new ConfigurationException("Failed to validate field: " + field.getName(), e);
-            }
-        }
-    }
-
-    private void processComments(Class<?> configClass, CommentedFileConfig config) {
-        // Process field comments
-        for (Field field : configClass.getDeclaredFields()) {
-            Comment comment = field.getAnnotation(Comment.class);
-            if (comment != null) {
-                String path = getConfigPath(field);
-                String[] comments = comment.value();
-                if (comments.length > 0) {
-                    // For TOML, we join with \n to create proper multi-line comments
-                    config.setComment(path, String.join("\n", comments));
-                }
-            }
-
-            // Handle nested objects
-            try {
-                field.setAccessible(true);
-                Class<?> fieldType = field.getType();
-                if (!fieldType.isPrimitive() &&
-                        !fieldType.getName().startsWith("java.lang.") &&
-                        !fieldType.isEnum() &&
-                        !Collection.class.isAssignableFrom(fieldType) &&
-                        !Map.class.isAssignableFrom(fieldType)) {
-                    processComments(fieldType, config);
-                }
-            } catch (Exception e) {
-                // Log but continue processing other fields
-                plugin.getLogger().warning("Failed to process comments for field: " + field.getName());
             }
         }
     }
@@ -271,12 +234,6 @@ public class TomlConfigManager {
                 if (!config.contains(path) && value != null) {
                     config.set(path, value);
                     updated = true;
-
-                    // Process comments for new fields
-                    Comment comment = field.getAnnotation(Comment.class);
-                    if (comment != null) {
-                        config.setComment(path, String.join("\n", comment.value()));
-                    }
                 }
 
                 // Handle nested objects recursively

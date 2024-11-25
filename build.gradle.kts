@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.2.2-beta"
+version = "1.2.3-beta"
 
 repositories {
     mavenCentral()
@@ -36,9 +36,9 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
 
     // TOML
-    implementation("com.electronwill.night-config:toml:3.6.7")
-    implementation("com.electronwill.night-config:core:3.6.7")
-    implementation("com.electronwill.night-config:json:3.6.7")
+    implementation("com.electronwill.night-config:toml:3.8.1")
+    implementation("com.electronwill.night-config:core:3.8.1")
+    implementation("com.electronwill.night-config:json:3.8.1")
 
     // Redis Caching
     implementation("redis.clients:jedis:5.2.0")

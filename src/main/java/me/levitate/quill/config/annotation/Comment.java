@@ -5,15 +5,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Comment annotation to add comments to configuration fields
- */
-@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface Comment {
-    /**
-     * The comment lines to add above the field
-     * @return Array of comment lines
-     */
-    String[] value();
+    String value();
 }

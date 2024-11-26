@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.2.5-beta"
+version = "1.2.6-beta"
 
 repositories {
     mavenCentral()
@@ -36,9 +36,7 @@ dependencies {
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
 
     // TOML
-    implementation("com.electronwill.night-config:toml:3.8.1")
-    implementation("com.electronwill.night-config:core:3.8.1")
-    implementation("com.electronwill.night-config:json:3.8.1")
+    implementation("de.exlll:configlib-paper:4.5.0")
 
     // Redis Caching
     implementation("redis.clients:jedis:5.2.0")
@@ -88,8 +86,6 @@ tasks {
         relocate("co.aikar.locales", "me.levitate.locales")
         relocate("dev.triumphteam.gui", "me.levitate.gui")
         relocate("com.fasterxml.jackson", "me.levitate.jackson")
-        relocate("com.mysql", "me.levitate.mysql")
-        relocate("com.zaxxer.hikari", "me.levitate.hikari")
 
         archiveClassifier.set("")
         minimize()

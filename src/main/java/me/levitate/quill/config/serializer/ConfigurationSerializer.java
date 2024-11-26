@@ -1,23 +1,22 @@
 package me.levitate.quill.config.serializer;
 
-public interface ConfigurationSerializer<T> {
-    /**
-     * Serialize an object to a YAML-compatible format
-     * @param value The value to serialize
-     * @return A YAML-compatible object
-     */
-    Object serialize(T value);
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import java.io.IOException;
+import java.util.function.Function;
 
-    /**
-     * Deserialize an object from YAML
-     * @param value The YAML value
-     * @return The deserialized object
-     */
-    T deserialize(Object value);
+public class ConfigurationSerializer<T> extends StdSerializer<T> {
+    private final Function<T, Object> serializer;
 
-    /**
-     * Get the type this serializer handles
-     * @return The class this serializer handles
-     */
-    Class<T> getType();
+    public ConfigurationSerializer(Class<T> type, Function<T, Object> serializer) {
+        super(type);
+        this.serializer = serializer;
+    }
+
+    @Override
+    public void serialize(T value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+        Object serialized = serializer.apply(value);
+        provider.defaultSerializeValue(serialized, gen);
+    }
 }

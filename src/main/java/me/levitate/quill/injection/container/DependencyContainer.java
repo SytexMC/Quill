@@ -2,8 +2,6 @@ package me.levitate.quill.injection.container;
 
 import lombok.Getter;
 import me.levitate.quill.cache.CacheManager;
-import me.levitate.quill.config.ConfigManager;
-import me.levitate.quill.config.toml.TomlConfigManager;
 import me.levitate.quill.event.EventManager;
 import me.levitate.quill.hook.HookManager;
 import me.levitate.quill.injection.annotation.Inject;
@@ -11,6 +9,7 @@ import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.annotation.PostConstruct;
 import me.levitate.quill.injection.annotation.PreDestroy;
 import me.levitate.quill.injection.exception.DependencyException;
+import me.levitate.quill.logger.QuillLogger;
 import me.levitate.quill.manager.CommandManager;
 import me.levitate.quill.utils.common.TaskScheduler;
 import org.bukkit.plugin.Plugin;
@@ -51,9 +50,8 @@ public class DependencyContainer {
 
     private void registerCoreModules() {
         try {
+            registerModule(QuillLogger.class);
             registerModule(CacheManager.class);
-            registerModule(ConfigManager.class);
-            registerModule(TomlConfigManager.class);
             registerModule(HookManager.class);
             registerModule(TaskScheduler.class);
             registerModule(EventManager.class);
@@ -99,8 +97,6 @@ public class DependencyContainer {
                 modules.remove(moduleClass);
                 throw e; // Re-throw to be caught by outer try-catch
             }
-
-            logger.fine("Successfully registered module: " + moduleClass.getName());
         } catch (Exception e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             String errorMessage = "Failed to register module " + moduleClass.getName() + ": " + cause.getMessage();

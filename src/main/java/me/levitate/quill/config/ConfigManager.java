@@ -24,15 +24,16 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 @Module
 @SuppressWarnings("unused")
 public class ConfigManager {
     private final Map<Class<?>, CommentedConfigurationSerializer> commentSerializers = new HashMap<>();
+    private final Map<Class<?>, List<Consumer<?>>> reloadListeners = new ConcurrentHashMap<>();
 
     private Map<Class<?>, Object> configInstances;
-    private List<ConfigReloadListener> reloadListeners;
     private ObjectMapper mapper;
     private SimpleModule serializerModule;
 
@@ -45,7 +46,6 @@ public class ConfigManager {
     @PostConstruct
     private void init() {
         this.configInstances = new ConcurrentHashMap<>();
-        this.reloadListeners = new ArrayList<>();
 
         // Configure Jackson
         YAMLFactory yamlFactory = YAMLFactory.builder()
@@ -79,8 +79,9 @@ public class ConfigManager {
         notifyReloadListeners();
     }
 
-    public void addReloadListener(ConfigReloadListener listener) {
-        reloadListeners.add(listener);
+    public <T> void addReloadListener(Class<T> configClass, Consumer<T> listener) {
+        reloadListeners.computeIfAbsent(configClass, k -> new ArrayList<>())
+                .add(listener);
     }
 
     public <T> void registerSerializer(Class<T> type, ConfigurationSerializer<T> serializer) {
@@ -134,8 +135,16 @@ public class ConfigManager {
                         }));
     }
 
+    @SuppressWarnings("unchecked")
     private void notifyReloadListeners() {
-        reloadListeners.forEach(ConfigReloadListener::onConfigReload);
+        configInstances.forEach((configClass, instance) -> {
+            List<Consumer<?>> listeners = reloadListeners.get(configClass);
+            if (listeners != null) {
+                listeners.forEach(listener ->
+                        ((Consumer<Object>) listener).accept(instance)
+                );
+            }
+        });
     }
 
     private <T> T loadConfig(Class<T> configClass) {

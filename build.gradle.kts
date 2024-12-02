@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.levitate"
-version = "1.2.8-beta"
+version = "1.3.0-beta"
 
 repositories {
     mavenCentral()
@@ -34,6 +34,9 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1")
+
+    implementation("com.squareup.moshi:moshi:1.15.1")
+    implementation("com.squareup.moshi:moshi-adapters:1.15.1")
 
     // TOML
     implementation("de.exlll:configlib-paper:4.5.0")

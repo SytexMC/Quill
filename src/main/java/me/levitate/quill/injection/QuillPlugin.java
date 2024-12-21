@@ -2,7 +2,6 @@ package me.levitate.quill.injection;
 
 import co.aikar.commands.BaseCommand;
 import lombok.Getter;
-import me.levitate.quill.Quill;
 import me.levitate.quill.injection.annotation.Module;
 import me.levitate.quill.injection.container.DependencyContainer;
 import me.levitate.quill.injection.exception.DependencyException;
@@ -36,7 +35,7 @@ public abstract class QuillPlugin extends JavaPlugin {
         try {
             // Initialize container
             Plugin quillPlugin = getServer().getPluginManager().getPlugin("Quill");
-            if (!(quillPlugin instanceof Quill)) {
+            if (quillPlugin == null) {
                 getLogger().severe("Quill plugin not found! Make sure it's installed.");
                 getServer().getPluginManager().disablePlugin(this);
                 return;
